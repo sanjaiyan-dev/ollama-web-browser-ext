@@ -10,4 +10,8 @@ export default defineConfig({
 			},
 		},
 	},
+	manifest: {
+		name: "Ollama Web Browser",
+		permissions: ["sidePanel", "tabs"],
+	},
 });

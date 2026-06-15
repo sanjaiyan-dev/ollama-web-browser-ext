@@ -13,15 +13,20 @@
 		"zip:firefox": "wxt zip -b firefox",
 		"compile": "tsc --noEmit",
 		"postinstall": "wxt prepare",
-		"format": "npx @biomejs/biome format --write"
+		"format": "npx @biomejs/biome format --write",
+		"fmt": "npm run format"
 	},
 	"dependencies": {
 		"@tanstack/query-sync-storage-persister": "^5.101.0",
 		"@tanstack/react-query": "^5.101.0",
 		"@tanstack/react-query-persist-client": "^5.101.0",
 		"@wxt-dev/storage": "^1.2.8",
+		"axios": "^1.18.0",
+		"jotai": "^2.20.1",
 		"react": "^19.2.4",
-		"react-dom": "^19.2.4"
+		"react-dom": "^19.2.4",
+		"react-router-dom": "^7.17.0",
+		"tailwindcss": "^4.3.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.0",
