@@ -14,7 +14,8 @@
 		"compile": "tsc --noEmit",
 		"postinstall": "wxt prepare",
 		"format": "npx @biomejs/biome format --write",
-		"fmt": "npm run format"
+		"fmt": "npm run format",
+		"lint": "biome lint ./entrypoints ./hooks"
 	},
 	"dependencies": {
 		"@tanstack/query-sync-storage-persister": "^5.101.0",
@@ -22,9 +23,12 @@
 		"@tanstack/react-query-persist-client": "^5.101.0",
 		"@wxt-dev/storage": "^1.2.8",
 		"axios": "^1.18.0",
+		"fuse.js": "^7.4.2",
 		"jotai": "^2.20.1",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
+		"react-fusejs": "^0.2.1",
+		"react-router": "^7.17.0",
 		"react-router-dom": "^7.17.0",
 		"tailwindcss": "^4.3.1"
 	},
