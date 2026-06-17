@@ -15,7 +15,7 @@ const useOllamaListModels = () => {
 			return axios.get(`${ollamaEndPoint}/api/tags`, { signal });
 		},
 		staleTime: Infinity,
-		gcTime: 21 * 60 * 1000,
+		gcTime: 60 * 60 * 1000 * 3,
 	});
 };
 
