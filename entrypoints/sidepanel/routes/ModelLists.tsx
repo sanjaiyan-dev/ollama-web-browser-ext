@@ -1,6 +1,6 @@
 import { useOllamaListModels } from "@/hooks/query";
-import { useOllamaEndPointRead } from "@/hooks/store";
-import { useState } from "react";
+import { ollamaSelectedModelState, useOllamaEndPointRead } from "@/hooks/store";
+import { startTransition, useState } from "react";
 import { useFuse } from "react-fusejs";
 import { ErrorUI, LoadingUI } from "../layout/Status";
 
@@ -28,9 +28,17 @@ export default function OllamaSidePanel() {
 	const models = data?.data?.models as OllamaModel[];
 
 	const [search, setSearch] = useState("");
-	const [activeModel, setActiveModel] = useState<string>(models?.[0]?.name);
+	const [selectedModel, setSelectedModel] = ollamaSelectedModelState();
+	const [activeModel, setActiveModel] = useState<string>(
+		selectedModel || models?.[0]?.name,
+	);
 	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-
+	const selectActiveModel = (modelName: string) => {
+		setActiveModel(modelName);
+		startTransition(() => {
+			setSelectedModel(modelName);
+		});
+	};
 	// Helper: Format bytes to Gigabytes
 	const formatSize = (bytes: number) => {
 		return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
@@ -127,7 +135,7 @@ export default function OllamaSidePanel() {
 						return (
 							<div
 								key={model.name}
-								onClick={() => setActiveModel(model.name)}
+								onClick={() => selectActiveModel(model.name)}
 								className={`group relative rounded-xl p-3.5 border transition-all cursor-pointer ${
 									isActive
 										? "bg-zinc-900 border-violet-500/60 shadow-[0_4px_20px_-4px_rgba(139,92,246,0.15)]"
@@ -154,6 +162,7 @@ export default function OllamaSidePanel() {
 										onClick={(e) => {
 											e.stopPropagation();
 											handleCopy(model.name, idx);
+											selectActiveModel(model.name);
 										}}
 										className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
 										title="Copy model name"
