@@ -1,6 +1,9 @@
-import { useState, useMemo } from "react";
+import { useOllamaListModels } from "@/hooks/query";
+import { useOllamaEndPointRead } from "@/hooks/store";
+import { useState } from "react";
 import { useFuse } from "react-fusejs";
-// The exact JSON structure received from the Ollama tags endpoint
+import { ErrorUI, LoadingUI } from "../layout/Status";
+
 interface OllamaModel {
 	name: string;
 	model: string;
@@ -18,51 +21,14 @@ interface OllamaModel {
 	capabilities: string[];
 }
 
-const fetchedResponse = {
-	data: {
-		models: [
-			{
-				name: "gemma4:latest",
-				model: "gemma4:latest",
-				modified_at: "2026-06-09T07:52:55.337253553+05:30",
-				size: 9608350718,
-				digest:
-					"c6eb396dbd5992bbe3f5cdb947e8bbc0ee413d7c17e2beaae69f5d569cf982eb",
-				details: {
-					parent_model: "",
-					format: "gguf",
-					family: "gemma4",
-					families: ["gemma4"],
-					parameter_size: "8.0B",
-					quantization_level: "Q4_K_M",
-				},
-				capabilities: ["completion", "tools", "thinking"],
-			},
-			{
-				name: "gemma4:e4b",
-				model: "gemma4:e4b",
-				modified_at: "2026-06-09T07:07:55.228116658+05:30",
-				size: 9608350718,
-				digest:
-					"c6eb396dbd5992bbe3f5cdb947e8bbc0ee413d7c17e2beaae69f5d569cf982eb",
-				details: {
-					parent_model: "",
-					format: "gguf",
-					family: "gemma4",
-					families: ["gemma4"],
-					parameter_size: "8.0B",
-					quantization_level: "Q4_K_M",
-				},
-				capabilities: ["completion", "tools", "thinking"],
-			},
-		],
-	},
-};
-
 export default function OllamaSidePanel() {
-	const [models] = useState<OllamaModel[]>(fetchedResponse.data.models);
+	const { data, isLoading, isError } = useOllamaListModels();
+	const endpoint = useOllamaEndPointRead();
+
+	const models = data?.data?.models as OllamaModel[];
+
 	const [search, setSearch] = useState("");
-	const [activeModel, setActiveModel] = useState<string>("gemma4:latest");
+	const [activeModel, setActiveModel] = useState<string>(models?.[0]?.name);
 	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
 	// Helper: Format bytes to Gigabytes
@@ -73,7 +39,7 @@ export default function OllamaSidePanel() {
 	// Helper: Format ISO date to a friendly string
 	const formatDate = (isoString: string) => {
 		const date = new Date(isoString);
-		return date.toLocaleDateString("en-US", {
+		return date.toLocaleDateString("en-GB", {
 			month: "short",
 			day: "numeric",
 			year: "numeric",
@@ -86,11 +52,26 @@ export default function OllamaSidePanel() {
 		setTimeout(() => setCopiedIndex(null), 1500);
 	};
 
-	const filteredModels = useMemo(() => {
-		return models.filter((model) =>
-			model.name.toLowerCase().includes(search.toLowerCase()),
+	const { results: filteredModels, deferredSearchTerm } = useFuse({
+		items: models || [],
+		keys: ["name", "model"],
+		searchQuery: search,
+		threshold: 0.3,
+		matchAllOnEmptyQuery: true,
+	});
+
+	if (isLoading) {
+		return <LoadingUI footerTxt="Fetching Model Info..." />;
+	}
+	if (isError) {
+		return (
+			<ErrorUI
+				copyTagTxt="terminal"
+				copyButtonTxt="Copy Terminal Code"
+				copyHeaderTxt="Terminal Code"
+			/>
 		);
-	}, [models, search]);
+	}
 
 	return (
 		<div className="w-full h-screen flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-violet-500/30 overflow-hidden">
@@ -103,7 +84,7 @@ export default function OllamaSidePanel() {
 					</h1>
 				</div>
 				<span className="text-xs text-zinc-500 bg-zinc-900 px-2 py-0.5 rounded-md border border-zinc-800">
-					localhost:11434
+					{endpoint}
 				</span>
 			</header>
 
@@ -137,10 +118,11 @@ export default function OllamaSidePanel() {
 			<div className="flex-1 overflow-y-auto px-3 pb-4 space-y-3 scrollbar-thin scrollbar-thumb-zinc-800">
 				{filteredModels.length === 0 ? (
 					<div className="text-center py-8 text-zinc-500 text-xs">
-						No matching models found.
+						No matching models found named {deferredSearchTerm}.
 					</div>
 				) : (
-					filteredModels.map((model, idx) => {
+					filteredModels.map((result, idx) => {
+						const model = result.item;
 						const isActive = activeModel === model.name;
 						return (
 							<div
@@ -175,6 +157,7 @@ export default function OllamaSidePanel() {
 										}}
 										className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
 										title="Copy model name"
+										type="button"
 									>
 										{copiedIndex === idx ? (
 											<svg

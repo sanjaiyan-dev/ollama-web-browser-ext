@@ -1,0 +1,23 @@
+@keyframes pulseAurora {
+	0%,
+	100% {
+		transform: scale(1) translate(0px, 0px);
+		opacity: 0.15;
+	}
+	33% {
+		transform: scale(1.15) translate(20px, -15px);
+		opacity: 0.25;
+	}
+	66% {
+		transform: scale(0.9) translate(-15px, 20px);
+		opacity: 0.12;
+	}
+}
+@keyframes dataFlow {
+	0% {
+		stroke-dashoffset: 40;
+	}
+	100% {
+		stroke-dashoffset: 0;
+	}
+}

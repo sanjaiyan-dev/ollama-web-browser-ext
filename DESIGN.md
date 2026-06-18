@@ -108,6 +108,29 @@ Liquid Glass completely abandons harsh, opaque drop shadows in favor of **refrac
 - **Level 3 (Interactive Layers):** The floating bottom nav bar. Uses aggressive blurring (`backdrop-blur-2xl bg-white/[0.08]`) and a slightly brighter border (`border-white/20`) to create a clear z-index separation.
 - **Shadows:** Use large, highly diffused, colored shadows (e.g., `shadow-[0_8px_32px_rgba(139,92,246,0.15)]`) instead of harsh black drop shadows.
 
+## Magnetic Hover Pull (Tactile Physics)
+
+To elevate the spatial feel of the interface and bridge the gap between static glass and tactile physical interfaces, interactive control nodes within the navigation bar implement a **Magnetic Hover Pull** effect. 
+
+When a pointer enters a control's target zone, the icon dynamically detaches from its center coordinate and gravitates toward the cursor. This interaction simulates physical weight, friction, and magnetic attraction.
+
+### Behavioral & Physics Specifications
+
+- **Physics Tuning (Framer Motion Springs):**
+  - **Stiffness (`180`):** Tuned high to ensure the initial attraction feels snappy, responsive, and immediate.
+  - **Damping (`12`):** Kept relatively low to allow a minor, organic rebound (wobble) when the cursor crosses the center bounds, simulating soft elasticity.
+- **Translation Constancy:**
+  - The icon's translation is limited to **`35%`** of the total distance between the button's geometric center and the current cursor coordinates. This strict ratio prevents the icon from clipping the button's physical boundaries or escaping the glass container.
+- **The Micro-Interaction Loop:**
+  - **On Enter/Move:** The spring calculations track cursor coordinate deviations. The icon smoothly displaces.
+  - **On Click (`whileTap`):** The targeted button implements an immediate visual compression to `scale: 0.9` or `scale: 0.95`.
+  - **On Exit:** The tracking is disabled, and the icon snaps back to its origin coordinates `[x: 0, y: 0]` using high-damping spring recovery to prevent infinite oscillation.
+
+### Implementation Tips
+
+- Map the cursor's coordinate delta relative to the target element's bounding client rectangle (`getBoundingClientRect()`).
+- Keep the boundary container (`button`) physically static, and only apply the translation vector to the *child* graphics element (the SVG icon itself) to maintain clean layout constraints and prevent layout shifting.
+
 ## Shapes
 
 The interface completely avoids sharp corners to create a liquid, fluid feel.

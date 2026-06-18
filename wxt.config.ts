@@ -16,6 +16,13 @@ export default defineConfig({
 	}),
 	manifest: {
 		name: "Ollama Web Browser",
-		permissions: ["sidePanel", "tabs", "storage"],
+		permissions: [
+			"sidePanel",
+			"tabs",
+			"storage",
+			"system.cpu",
+			"system.memory",
+		],
+		host_permissions: ["http://localhost/*"],
 	},
 });

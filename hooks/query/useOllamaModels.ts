@@ -10,7 +10,7 @@ const useOllamaListModels = () => {
 			OLLAMA_BROWSER_EXT_REACTQUERY_KEY,
 			"useOllamaListModels",
 			ollamaEndPoint,
-		],
+		] as const,
 		queryFn: async ({ signal }) => {
 			return axios.get(`${ollamaEndPoint}/api/tags`, { signal });
 		},
