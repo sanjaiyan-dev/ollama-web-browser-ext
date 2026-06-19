@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, startTransition } from "react";
+import { useState, useEffect, useRef, startTransition, lazy } from "react";
 import {
 	motion,
 	AnimatePresence,
@@ -12,13 +12,14 @@ import {
 	ArrowUp,
 	X,
 	BrainCircuit,
+	Newspaper,
 } from "lucide-react";
 import "./Navigation.css";
 import { Link } from "react-router";
 
 import { useOllamaQuickQuestionState } from "@/hooks/store";
 
-import { OllamaQuickQuestionPopover } from "./QuickQuestionPopOver";
+const OllamaQuickQuestionPopover = lazy(() => import("./QuickQuestionPopOver"));
 
 interface MagneticButtonProps {
 	children: React.ReactNode;
@@ -86,6 +87,13 @@ const navItems = [
 		glow: "rgba(255, 46, 99, 0.4)",
 		to: "sys-usage",
 	},
+	{
+		id: "google",
+		icon: Newspaper,
+		color: "#FBBC05",
+		glow: "rgba(251, 188, 5, 0.4)",
+		to: "google",
+	},
 ] as const;
 
 export function BottomNav() {
@@ -148,7 +156,7 @@ export function BottomNav() {
 					stiffness: 220,
 					damping: 24,
 				}}
-				className={`fixed bottom-8 left-1/2 -translate-x-1/2 w-full  ${isExpanded ? "max-w-105" : "max-w-30"} px-4 z-50 flex justify-center`}
+				className={`fixed bottom-8 left-1/2 -translate-x-1/2 w-full  ${isExpanded ? "max-w-115" : "max-w-30"} px-4 z-50 flex justify-center`}
 			>
 				<motion.div
 					ref={containerRef}
@@ -227,7 +235,7 @@ export function BottomNav() {
 									<X className="w-4 h-4 text-[#64748B] hover:text-[#94A3B8]" />
 								</MagneticButton>
 
-								<div className="flex items-center gap-1.5 shrink-0">
+								<div className="flex items-center gap-1 shrink-0">
 									{navItems.map((item) => {
 										const isActive = activeTab === item.id;
 										const Icon = item.icon;

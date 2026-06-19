@@ -4,7 +4,7 @@ import {
 	useBrowserCurrentActiveTab,
 } from "../query";
 import { ollamaSelectedModelRead, useOllamaEndPointRead } from "../store";
-import { use, useDeferredValue } from "react";
+import { useDeferredValue } from "react";
 import axios from "axios";
 import { useLocation } from "react-router";
 import { useActiveTab } from "../utils";
@@ -87,6 +87,7 @@ ${deferredQuestion}
 						headers: {
 							"Content-Type": "application/json",
 						},
+						signal,
 					},
 				);
 

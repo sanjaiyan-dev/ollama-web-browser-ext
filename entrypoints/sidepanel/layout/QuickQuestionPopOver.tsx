@@ -1,6 +1,12 @@
-import { useState, useEffect, useRef, useDeferredValue, useMemo } from "react";
+import {
+	useState,
+	useEffect,
+	useRef,
+	useDeferredValue,
+	useMemo,
+	startTransition,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	X,
 	Sparkles,
@@ -9,12 +15,12 @@ import {
 	RefreshCw,
 	AlertCircle,
 	ChevronDown,
-	Edit3,
 } from "lucide-react";
-import { useBrowserCurrentActiveTab, useOllamaListModels } from "@/hooks/query";
+import { useBrowserCurrentActiveTab } from "@/hooks/query";
+import { useOllamaListModels } from "@/hooks/query/useOllamaModels";
 import { useActiveTab } from "@/hooks/utils";
 
-import { useOllamaSelectedModelState, useOllamaEndPointRead } from "@/hooks/store";
+import { useOllamaSelectedModelState } from "@/hooks/store";
 import { OllamaModel } from "../routes/ModelLists";
 import { useOllamaQuickAnswer } from "@/hooks/query/useOllamaQuickAnswer";
 
@@ -24,7 +30,6 @@ interface PopoverProps {
 	query: string;
 }
 
-// Stays intact: Stable top-level function that the React compiler can freely ignore
 function parseInline(raw: string) {
 	const boldTokens = raw.split(/(\*\*.*?\*\*)/g);
 	return boldTokens.map((segment, i) => {
@@ -52,7 +57,7 @@ function parseInline(raw: string) {
 	});
 }
 
-export function OllamaQuickQuestionPopover({
+export default function OllamaQuickQuestionPopover({
 	isOpen,
 	onClose,
 	query,
@@ -71,10 +76,9 @@ export function OllamaQuickQuestionPopover({
 	const { data } = useOllamaListModels();
 
 	const localModels = (data?.data?.models as OllamaModel[]) || [];
-	
-	// FIX 1: Ensure your custom hook is called with the `use` prefix!
+
 	const [selectedModel, setSelectedModel] = useOllamaSelectedModelState();
-	
+
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
 	// Dynamic user query tweak input tracking
@@ -85,10 +89,8 @@ export function OllamaQuickQuestionPopover({
 	// Surface border coordinate coordinates for modern glow mechanics
 	const cardRef = useRef<HTMLDivElement>(null);
 	const [freshCoord, setMouseCoords] = useState({ x: 0, y: 0 });
-	
-	// Note: Perfectly utilizing the React 19 `initialValue` prop in useDeferredValue
 	const mouseCoords = useDeferredValue(freshCoord, { x: 0, y: 0 });
-	
+
 	useEffect(() => {
 		if (query) {
 			setEditedQuery(query);
@@ -126,9 +128,11 @@ export function OllamaQuickQuestionPopover({
 	function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
 		if (!cardRef.current) return;
 		const rect = cardRef.current.getBoundingClientRect();
-		setMouseCoords({
-			x: e.clientX - rect.left,
-			y: e.clientY - rect.top,
+		startTransition(() => {
+			setMouseCoords({
+				x: e.clientX - rect.left,
+				y: e.clientY - rect.top,
+			});
 		});
 	}
 
@@ -233,10 +237,6 @@ export function OllamaQuickQuestionPopover({
 			);
 		});
 	}, [responseText]);
-
-	// FIX 2: REMOVED the duplicate inner `parseInline()` that was placed here! 
-	// It caused the compiler to fail because the manual useMemo above used it without declaring it as a dependency. 
-	// It will now safely fallback to the outer top-level `parseInline()`
 
 	return (
 		<AnimatePresence>

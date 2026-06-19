@@ -1,5 +1,8 @@
-import { useOllamaListModels } from "@/hooks/query";
-import { useOllamaSelectedModelState, useOllamaEndPointRead } from "@/hooks/store";
+import { useOllamaListModels } from "@/hooks/query/useOllamaModels";
+import {
+	useOllamaSelectedModelState,
+	useOllamaEndPointRead,
+} from "@/hooks/store";
 import { startTransition, useState } from "react";
 import { useFuse } from "react-fusejs";
 import { ErrorUI, LoadingUI } from "../layout/Status";
@@ -22,10 +25,9 @@ export interface OllamaModel {
 }
 
 export default function OllamaSidePanel() {
-	const { data, isLoading, isError, status, error } = useOllamaListModels();
+	const { data, isLoading, isError } = useOllamaListModels();
 	const endpoint = useOllamaEndPointRead();
-	console.log(status);
-	console.log(error);
+
 	const models = data?.data?.models as OllamaModel[];
 
 	const [search, setSearch] = useState("");

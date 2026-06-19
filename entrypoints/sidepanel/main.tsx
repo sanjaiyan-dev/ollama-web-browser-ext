@@ -1,7 +1,7 @@
 "use memo";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import React, { lazy, startTransition, Suspense } from "react";
+import React, { lazy, startTransition } from "react";
 import ReactDOM from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router";
 import "./style.css";
