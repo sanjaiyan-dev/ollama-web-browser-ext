@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, startTransition } from "react";
 import {
 	motion,
 	AnimatePresence,
@@ -15,22 +15,21 @@ import {
 } from "lucide-react";
 import "./Navigation.css";
 import { Link } from "react-router";
-import { OLLAMA_BROWSER_EXT_REACTQUERY_KEY } from "@/hooks/query";
-import { useOllamaEndPointRead } from "@/hooks/store";
-import { queryClient } from "../main";
+
+import { useOllamaQuickQuestionState } from "@/hooks/store";
+
+import { OllamaQuickQuestionPopover } from "./QuickQuestionPopOver";
 
 interface MagneticButtonProps {
 	children: React.ReactNode;
 	className?: string;
 	onClick?: () => void;
-	prefetchQueryKey?: readonly any[];
 }
 
 function MagneticButton({
 	children,
 	className = "",
 	onClick,
-	prefetchQueryKey,
 }: MagneticButtonProps) {
 	const x = useMotionValue(0);
 	const y = useMotionValue(0);
@@ -59,68 +58,42 @@ function MagneticButton({
 			onClick={onClick}
 			className={`${className} outline-none cursor-pointer`}
 			whileTap={{ scale: 0.92 }}
-			onMouseEnter={() => {
-				if (prefetchQueryKey !== undefined) {
-					queryClient.prefetchQuery({
-						queryKey: prefetchQueryKey,
-					});
-				}
-			}}
-			onTouchStart={() => {
-				if (prefetchQueryKey !== undefined) {
-					queryClient.prefetchQuery({
-						queryKey: prefetchQueryKey,
-					});
-				}
-			}}
 		>
 			{children}
 		</motion.button>
 	);
 }
 
-export function BottomNav() {
-	const ollamaEndPoint = useOllamaEndPointRead();
+const navItems = [
+	{
+		id: "chat",
+		icon: MessageCircle,
+		color: "#00E0FF",
+		glow: "rgba(0, 224, 255, 0.4)",
+		to: "/",
+	},
+	{
+		id: "models",
+		icon: BrainCircuit,
+		color: "#8B5CF6",
+		glow: "rgba(139, 92, 246, 0.4)",
+		to: "/models-lists",
+	},
+	{
+		id: "sys-usage",
+		icon: Cpu,
+		color: "#FF2E63",
+		glow: "rgba(255, 46, 99, 0.4)",
+		to: "sys-usage",
+	},
+] as const;
 
-	const navItems = [
-		{
-			id: "chat",
-			icon: MessageCircle,
-			color: "#00E0FF",
-			glow: "rgba(0, 224, 255, 0.4)",
-			to: "/chat",
-			prefetchQueryKey: [
-				OLLAMA_BROWSER_EXT_REACTQUERY_KEY,
-				"useOllamaListModels",
-				ollamaEndPoint,
-			],
-		},
-		{
-			id: "models",
-			icon: BrainCircuit,
-			color: "#8B5CF6",
-			glow: "rgba(139, 92, 246, 0.4)",
-			to: "/models-lists",
-			prefetchQueryKey: [
-				OLLAMA_BROWSER_EXT_REACTQUERY_KEY,
-				"useOllamaListModels",
-				ollamaEndPoint,
-			],
-		},
-		{
-			id: "sys-usage",
-			icon: Cpu,
-			color: "#FF2E63",
-			glow: "rgba(255, 46, 99, 0.4)",
-			to: "sys-usage",
-			prefetchQueryKey: [OLLAMA_BROWSER_EXT_REACTQUERY_KEY, "useSystemUsage"],
-		},
-	] as const;
+export function BottomNav() {
 	const [activeTab, setActiveTab] =
 		useState<(typeof navItems)[number]["id"]>("chat");
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [isFocused, setIsFocused] = useState(false);
-	const [inputValue, setInputValue] = useState("");
+	const [inputValue, setInputValue] = useOllamaQuickQuestionState();
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -148,6 +121,18 @@ export function BottomNav() {
 			return () => clearTimeout(timer);
 		}
 	}, [isExpanded]);
+
+	const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+	const [popoverQuery, setPopoverQuery] = useState("");
+
+	const handleSendQuery = () => {
+		if (!inputValue.trim()) return;
+		startTransition(() => {
+			setPopoverQuery(inputValue.trim());
+		});
+		setIsPopoverOpen(true);
+		setIsFocused(false);
+	};
 
 	return (
 		<div
@@ -251,7 +236,6 @@ export function BottomNav() {
 											<Link key={item.id} to={item.to} prefetch="render">
 												<MagneticButton
 													key={item.id}
-													prefetchQueryKey={item.prefetchQueryKey}
 													onClick={() => setActiveTab(item.id)}
 													className="relative flex items-center justify-center w-10 h-10 rounded-full shrink-0"
 												>
@@ -342,12 +326,18 @@ export function BottomNav() {
 									</motion.div>
 
 									<input
+										required
 										ref={inputRef}
 										type="text"
 										value={inputValue}
 										onChange={(e) => setInputValue(e.target.value)}
 										onFocus={() => setIsFocused(true)}
 										onBlur={() => setIsFocused(false)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter") {
+												handleSendQuery();
+											}
+										}}
 										placeholder="Ask Ollama..."
 										className="w-full h-full bg-transparent text-[#F8FAFC] text-sm font-medium tracking-wide pl-10 pr-12 focus:outline-none placeholder:text-[#64748B] rounded-full"
 									/>
@@ -360,6 +350,7 @@ export function BottomNav() {
 												exit={{ opacity: 0, scale: 0.6, rotate: 90 }}
 												whileHover={{ scale: 1.05 }}
 												whileTap={{ scale: 0.95 }}
+												onClick={handleSendQuery}
 												className="absolute right-1.5 w-9 h-9 flex items-center justify-center rounded-full overflow-hidden shrink-0 shadow-[0_0_15px_rgba(139,92,246,0.3)]"
 											>
 												<div
@@ -380,6 +371,11 @@ export function BottomNav() {
 					</AnimatePresence>
 				</motion.div>
 			</motion.div>
+			<OllamaQuickQuestionPopover
+				isOpen={isPopoverOpen}
+				onClose={() => setIsPopoverOpen(false)}
+				query={popoverQuery}
+			/>
 		</div>
 	);
 }

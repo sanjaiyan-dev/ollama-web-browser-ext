@@ -4,8 +4,11 @@ import { atomWithStorage } from "jotai/utils";
 import {
 	useOllamaEndPointRead,
 	useOllamaEndPointState,
-	ollamaSelectedModelState,
+	useOllamaSelectedModelState,
 	ollamaSelectedModelRead,
+	useOllamaQuickQuestionState,
+	useOllamaQuickQuestionRead,
+	ollamaQuickQuestionAtom,
 } from "./useOllamaOptions";
 import {
 	ollamaEndPointAtom,
@@ -15,10 +18,13 @@ import {
 export {
 	useOllamaEndPointRead,
 	useOllamaEndPointState,
-	ollamaSelectedModelState,
+	useOllamaSelectedModelState,
 	ollamaSelectedModelRead,
+	useOllamaQuickQuestionState,
+	useOllamaQuickQuestionRead,
 };
-export { ollamaEndPointAtom, ollamaSelectedModelAtom };
+
+export { ollamaEndPointAtom, ollamaSelectedModelAtom, ollamaQuickQuestionAtom };
 
 type ValidWxtKey =
 	| `local:${string}`

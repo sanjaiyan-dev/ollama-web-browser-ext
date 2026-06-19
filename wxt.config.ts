@@ -22,7 +22,9 @@ export default defineConfig({
 			"storage",
 			"system.cpu",
 			"system.memory",
+			"scripting",
+			"activeTab",
 		],
-		host_permissions: ["http://localhost/*"],
+		host_permissions: ["http://localhost/*", "<all_urls>"],
 	},
 });

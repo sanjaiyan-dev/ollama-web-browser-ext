@@ -18,3 +18,65 @@
 		background-position: 0% 50%;
 	}
 }
+
+@keyframes floatMesh {
+	0% {
+		transform: translate(-50%, -50%) rotate(0deg) scale(1);
+	}
+	50% {
+		transform: translate(-45%, -55%) rotate(180deg) scale(1.15);
+	}
+	100% {
+		transform: translate(-50%, -50%) rotate(360deg) scale(1);
+	}
+}
+
+@keyframes appleIntelligenceSpin {
+	0% {
+		transform: rotate(0deg) scale(1);
+		filter: hue-rotate(0deg);
+	}
+	50% {
+		transform: rotate(180deg) scale(1.15);
+		filter: hue-rotate(180deg);
+	}
+	100% {
+		transform: rotate(360deg) scale(1);
+		filter: hue-rotate(360deg);
+	}
+}
+
+@keyframes applePulseBorder {
+	0%,
+	100% {
+		opacity: 0.55;
+	}
+	50% {
+		opacity: 0.95;
+	}
+}
+
+.glass-scrollbar::-webkit-scrollbar {
+	width: 5px;
+	height: 5px;
+}
+
+.glass-scrollbar::-webkit-scrollbar-track {
+	background: rgba(255, 255, 255, 0.01);
+	border-radius: 99px;
+}
+
+.glass-scrollbar::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 99px;
+	border: 1px solid rgba(255, 255, 255, 0.03);
+	backdrop-filter: blur(4px);
+}
+
+.glass-scrollbar::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.16);
+}
+
+.glass-scrollbar::-webkit-scrollbar-corner {
+	background: transparent;
+}
