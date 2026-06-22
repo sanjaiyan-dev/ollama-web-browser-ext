@@ -39,7 +39,7 @@ export async function fetchTabContent(
 			},
 		});
 
-		if (results && results[0]?.result) {
+		if (results?.[0]?.result) {
 			return results[0].result as ExtractedContent;
 		}
 		throw new Error("No content returned from page extraction.");

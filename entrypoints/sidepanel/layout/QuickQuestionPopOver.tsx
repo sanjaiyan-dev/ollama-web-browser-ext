@@ -21,7 +21,7 @@ import { useOllamaListModels } from "@/hooks/query/useOllamaModels";
 import { useActiveTab } from "@/hooks/utils";
 
 import { useOllamaSelectedModelState } from "@/hooks/store";
-import { OllamaModel } from "../routes/ModelLists";
+import type { OllamaModel } from "../routes/ModelLists";
 import { useOllamaQuickAnswer } from "@/hooks/query/useOllamaQuickAnswer";
 
 interface PopoverProps {

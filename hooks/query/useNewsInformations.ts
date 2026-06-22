@@ -45,7 +45,6 @@ export async function fetchGoogleNews(
 		return {
 			id: `${type}-${index}-${item.querySelector("pubDate")?.textContent}`,
 			title,
-
 			link: item.querySelector("link")?.textContent || "",
 			pubDate: item.querySelector("pubDate")?.textContent || "",
 			source,
