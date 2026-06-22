@@ -12,6 +12,7 @@ import App from "./App.tsx";
 
 const OllamaModelList = lazy(() => import("./routes/ModelLists.tsx"));
 const SystemMonitor = lazy(() => import("./routes/CPUUsage.tsx"));
+const ChatAI = lazy(() => import("./routes/Chat.tsx"));
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 export const queryClient = new QueryClient({
@@ -30,9 +31,10 @@ startTransition(() => {
 			<QueryClientProvider client={queryClient}>
 				<MemoryRouter useTransitions={true}>
 					<Routes>
-						<Route index element={<App />} />
+						<Route index element={<ChatAI />} />
 						<Route path="sys-usage" element={<SystemMonitor />} />
 						<Route path="models-lists" element={<OllamaModelList />} />
+						<Route path="ai-chat" element={<ChatAI />} />
 					</Routes>
 					<BottomNav />
 				</MemoryRouter>

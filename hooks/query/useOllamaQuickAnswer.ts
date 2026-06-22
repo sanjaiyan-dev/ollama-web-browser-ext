@@ -3,7 +3,7 @@ import {
 	OLLAMA_BROWSER_EXT_REACTQUERY_KEY,
 	useBrowserCurrentActiveTab,
 } from "../query";
-import { ollamaSelectedModelRead, useOllamaEndPointRead } from "../store";
+import { useOllamaSelectedModelRead, useOllamaEndPointRead } from "../store";
 import { useDeferredValue } from "react";
 import axios from "axios";
 import { useLocation } from "react-router";
@@ -19,7 +19,7 @@ export const useOllamaQuickAnswer = ({
 	trigger: boolean;
 }) => {
 	const ollamaEndPoint = useOllamaEndPointRead();
-	const ollamaModelName = ollamaSelectedModelRead();
+	const ollamaModelName = useOllamaSelectedModelRead();
 
 	const { pathname } = useLocation();
 	const activeTab = useActiveTab();

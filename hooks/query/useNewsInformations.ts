@@ -1,5 +1,6 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { OLLAMA_BROWSER_EXT_REACTQUERY_KEY } from ".";
+import { prefetchDNS } from "react-dom";
 
 export interface NewsItem {
 	id: string;
@@ -67,6 +68,7 @@ export function useNewsInternationalFeed() {
 }
 
 export function useNewsInternationalFeeds() {
+	prefetchDNS("https://news.google.com/rss");
 	return useQueries({
 		queries: [
 			{

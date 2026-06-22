@@ -19,7 +19,7 @@ export const ollamaSelectedModelAtom = atomWxtStorage<string | null>(
 export const useOllamaSelectedModelState = () => {
 	return useAtom(ollamaSelectedModelAtom);
 };
-export const ollamaSelectedModelRead = () => {
+export const useOllamaSelectedModelRead = () => {
 	return useAtomValue(ollamaSelectedModelAtom);
 };
 

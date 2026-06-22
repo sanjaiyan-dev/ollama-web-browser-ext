@@ -1,21 +1,21 @@
-import { useState, useEffect, useRef, startTransition, lazy } from "react";
 import {
-	motion,
 	AnimatePresence,
+	motion,
 	useMotionValue,
 	useSpring,
 } from "framer-motion";
 import {
-	MessageCircle,
-	Cpu,
-	Sparkles,
 	ArrowUp,
-	X,
 	BrainCircuit,
+	Cpu,
+	MessageCircle,
 	Newspaper,
+	Sparkles,
+	X,
 } from "lucide-react";
-import "./Navigation.css";
+import { lazy, startTransition, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
+import "./Navigation.css";
 
 import { useOllamaQuickQuestionState } from "@/hooks/store";
 
@@ -71,7 +71,7 @@ const navItems = [
 		icon: MessageCircle,
 		color: "#00E0FF",
 		glow: "rgba(0, 224, 255, 0.4)",
-		to: "/",
+		to: "ai-chat",
 	},
 	{
 		id: "models",
@@ -198,7 +198,7 @@ export function BottomNav() {
 							>
 								<MagneticButton
 									onClick={() => setIsExpanded(true)}
-									className="relative flex items-center justify-center w-13 h-13 rounded-full shrink-0"
+									className="relative flex items-center justify-center w-13 h-13 rounded-full shrink-0 shadow-md shadow-violet-300 hover:shadow-sm hover:shadow-purple-200 ring-violet-300 ring-1 transition-shadow"
 								>
 									<div
 										className="absolute inset-0 rounded-full"

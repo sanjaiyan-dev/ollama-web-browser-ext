@@ -1,0 +1,36 @@
+@keyframes aurora-1 {
+	0%,
+	100% {
+		transform: translate(0, 0) scale(1);
+	}
+	50% {
+		transform: translate(30px, 40px) scale(1.1);
+	}
+}
+@keyframes aurora-2 {
+	0%,
+	100% {
+		transform: translate(0, 0) scale(1);
+	}
+	50% {
+		transform: translate(-30px, -20px) scale(0.9);
+	}
+}
+@keyframes aurora-3 {
+	0%,
+	100% {
+		transform: translate(0, 0) scale(1);
+	}
+	50% {
+		transform: translate(20px, -40px) scale(1.2);
+	}
+}
+.aurora-1 {
+	animation: aurora-1 12s ease-in-out infinite;
+}
+.aurora-2 {
+	animation: aurora-2 15s ease-in-out infinite;
+}
+.aurora-3 {
+	animation: aurora-3 10s ease-in-out infinite;
+}

@@ -698,7 +698,7 @@ export default function TelemetryDashboard() {
 								{/* Progress fluid ring indicator */}
 								<div className="relative h-2 bg-white/[0.03] border border-white/[0.08] rounded-full overflow-hidden">
 									<motion.div
-										className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-[#8B5CF6] to-[#FF2E63] rounded-full"
+										className="absolute top-0 bottom-0 left-0 bg-linear-to-r from-[#8B5CF6] to-[#FF2E63] rounded-full"
 										animate={{ width: `${memoryPercentUsed}%` }}
 										transition={{ type: "spring", stiffness: 50, damping: 12 }}
 									/>

@@ -5,7 +5,7 @@ import {
 	useOllamaEndPointRead,
 	useOllamaEndPointState,
 	useOllamaSelectedModelState,
-	ollamaSelectedModelRead,
+	useOllamaSelectedModelRead,
 	useOllamaQuickQuestionState,
 	useOllamaQuickQuestionRead,
 	ollamaQuickQuestionAtom,
@@ -19,7 +19,7 @@ export {
 	useOllamaEndPointRead,
 	useOllamaEndPointState,
 	useOllamaSelectedModelState,
-	ollamaSelectedModelRead,
+	useOllamaSelectedModelRead,
 	useOllamaQuickQuestionState,
 	useOllamaQuickQuestionRead,
 };
