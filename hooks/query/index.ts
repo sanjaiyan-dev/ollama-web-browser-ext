@@ -9,9 +9,10 @@ export const OLLAMA_BROWSER_EXT_REACTQUERY_KEY =
 	"OLLAMA_BROWSER_EXT_REACTQUERY_KEY";
 
 export const chromeStorageAdapter = {
-	getItem: async (key: string) => {
+	getItem: async (key: string): Promise<string | null> => {
 		const result = await browser.storage.local.get(key);
-		return result[key] ?? null;
+		const value = result[key];
+		return typeof value === "string" ? value : null;
 	},
 	setItem: async (key: string, value: string) => {
 		await browser.storage.local.set({ [key]: value });
@@ -23,8 +24,6 @@ export const chromeStorageAdapter = {
 
 export const persister = createAsyncStoragePersister({
 	storage: chromeStorageAdapter,
-
 	key: "OLLAMA_BROWSER_CACHE",
-
 	throttleTime: 3012,
 });
