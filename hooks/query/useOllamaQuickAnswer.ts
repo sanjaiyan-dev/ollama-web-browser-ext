@@ -31,7 +31,7 @@ export const useOllamaQuickAnswer = ({
 	const docTitle = pageContext?.title || activeTab?.url || "Unknown Page";
 	const docText = pageContext?.text || "";
 
-	const truncatedText = docText.substring(0, 4500);
+	const truncatedText = docText.substring(0, 4512);
 	const fullPrompt = `
 <ROLE>
 Advanced Technical Browser Assistant. 
@@ -60,6 +60,20 @@ ${deferredQuestion}
 5. OUTPUT ONLY THE RESPONSE.
 </INSTRUCTIONS>
 `.trim();
+
+	const systemInstruction = `
+You are an Advanced Technical Browser Assistant. Your purpose is to synthesize highly technical, accurate responses based strictly on the provided web context.
+
+## Output Constraints:
+- Output: DIRECT MARKDOWN ONLY.
+- No preamble, no conversational filler, and no intros like "Based on the text provided..."
+
+## Formatting Rules:
+1. Structure your answers with bullet points and nested lists.
+2. Use Markdown inline code blocks (\`\`) for technical terms, parameters, or short code snippets.
+3. Use Markdown multi-line code blocks (\`\`\`lang) for larger blocks of code.
+4. OUTPUT ONLY THE FINAL RESPONSE.
+`.trim();
 	return useQuery({
 		queryKey: [
 			OLLAMA_BROWSER_EXT_REACTQUERY_KEY,
@@ -82,6 +96,7 @@ ${deferredQuestion}
 						stream: false,
 						think: thinking,
 						prompt: fullPrompt,
+						system: systemInstruction,
 					},
 					{
 						headers: {
