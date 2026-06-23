@@ -88,11 +88,11 @@ const navItems = [
 		to: "sys-usage",
 	},
 	{
-		id: "google",
+		id: "news",
 		icon: Newspaper,
 		color: "#FBBC05",
 		glow: "rgba(251, 188, 5, 0.4)",
-		to: "google",
+		to: "news",
 	},
 ] as const;
 

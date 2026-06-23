@@ -12,6 +12,7 @@ import App from "./App.tsx";
 
 const OllamaModelList = lazy(() => import("./routes/ModelLists.tsx"));
 const SystemMonitor = lazy(() => import("./routes/CPUUsage.tsx"));
+const News = lazy(() => import("./routes/News.tsx"));
 const ChatAI = lazy(() => import("./routes/Chat.tsx"));
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
@@ -35,6 +36,7 @@ startTransition(() => {
 						<Route path="sys-usage" element={<SystemMonitor />} />
 						<Route path="models-lists" element={<OllamaModelList />} />
 						<Route path="ai-chat" element={<ChatAI />} />
+						<Route path="news" element={<News />} />
 					</Routes>
 					<BottomNav />
 				</MemoryRouter>

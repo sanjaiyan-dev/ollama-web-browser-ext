@@ -1,0 +1,47 @@
+/* Inject these animations into your styles.css or a global css file */
+@keyframes rotate-glow {
+	0% {
+		transform: rotateX(0deg);
+	}
+	100% {
+		transform: rotateX(360deg);
+	}
+}
+
+@keyframes pulse-mesh {
+	0%,
+	100% {
+		transform: translate(0px, 0px) scale(1);
+	}
+	50% {
+		transform: translate(30px, -40px) scale(1.15);
+	}
+}
+
+@keyframes float-mesh {
+	0%,
+	100% {
+		transform: translate(0px, 0px) scale(1.1);
+	}
+	50% {
+		transform: translate(-25px, 35px) scale(0.95);
+	}
+}
+
+/* Custom Webkit scrollbar for Liquid Glass integration */
+.glass-scrollbar::-webkit-scrollbar {
+	width: 5px;
+}
+.glass-scrollbar::-webkit-scrollbar-track {
+	background: rgba(255, 255, 255, 0.01);
+}
+.glass-scrollbar::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 9999px;
+}
+.glass-scrollbar::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
+body {
+	background-color: #05050a;
+}
