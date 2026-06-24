@@ -8,11 +8,72 @@ import {
 	useMotionValue,
 	useSpring,
 } from "framer-motion";
-import React, { useDeferredValue, useMemo, useRef, useState } from "react";
+import React, {
+	useDeferredValue,
+	useMemo,
+	useRef,
+	useState,
+	useEffect,
+} from "react";
 import { LegendList } from "@legendapp/list/react";
 import { useFuse } from "react-fusejs";
+import { useMutation } from "@tanstack/react-query";
 import "./styles/News.css";
+import { Summary } from "lucide-react";
+import { useOllamaSelectedModelRead } from "@/hooks/store";
+import ReactMarkdown from "react-markdown";
 
+// --- CUSTOM OLLAMA REACT-QUERY HOOK ---
+export interface ChatMessage {
+	role: "user" | "assistant";
+	content: string;
+}
+
+interface OllamaGeneratePayload {
+	prompt: string;
+	system?: string;
+}
+
+export function useOllamaNewsAgent() {
+	return useMutation<string, Error, OllamaGeneratePayload>({
+		mutationKey: ["ollama-generate-bulk"],
+		mutationFn: async ({ prompt, system }) => {
+			const endpoint = "http://127.0.0.1:11434/api/generate";
+			try {
+				const response = await fetch(endpoint, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						model: "gemma4:latest", // Tailor this to your active local model (e.g., llama3, mistral)
+						prompt: prompt,
+						system: system,
+						stream: false,
+					}),
+				});
+
+				if (!response.ok) {
+					const errorText = await response.text();
+					throw new Error(
+						`Ollama error (${response.status}): ${errorText || response.statusText}`,
+					);
+				}
+
+				const data = await response.json();
+				return data.response as string;
+			} catch (err: any) {
+				throw new Error(
+					err.message && err.message.includes("Ollama error")
+						? err.message
+						: "Cannot reach Ollama. Verify Ollama is running locally and CORS is enabled via `OLLAMA_ORIGINS=*`.",
+				);
+			}
+		},
+	});
+}
+
+// --- MAGNETIC PHYSICS WRAPPER ---
 interface MagneticWrapperProps {
 	children: React.ReactNode;
 	className?: string;
@@ -24,11 +85,9 @@ export function MagneticWrapper({
 }: MagneticWrapperProps) {
 	const ref = useRef<HTMLDivElement>(null);
 
-	// Motion values tracking cursor offset
 	const x = useMotionValue(0);
 	const y = useMotionValue(0);
 
-	// Framer Motion Spring settings (Stiffness: 180, Damping: 12)
 	const springConfig = { stiffness: 180, damping: 12 };
 	const springX = useSpring(x, springConfig);
 	const springY = useSpring(y, springConfig);
@@ -36,22 +95,17 @@ export function MagneticWrapper({
 	const handleMouseMove = (e: React.MouseEvent) => {
 		if (!ref.current) return;
 		const rect = ref.current.getBoundingClientRect();
-
-		// Geometric Center of the trigger button
 		const centerX = rect.left + rect.width / 2;
 		const centerY = rect.top + rect.height / 2;
 
-		// Delta relative to cursor coordinates
 		const deltaX = e.clientX - centerX;
 		const deltaY = e.clientY - centerY;
 
-		// Translation constancy limit: 35% of total distance
 		x.set(deltaX * 0.35);
 		y.set(deltaY * 0.35);
 	};
 
 	const handleMouseLeave = () => {
-		// Return smoothly to origin coordinate
 		x.set(0);
 		y.set(0);
 	};
@@ -63,17 +117,14 @@ export function MagneticWrapper({
 			onMouseLeave={handleMouseLeave}
 			className={`relative cursor-pointer select-none ${className}`}
 		>
-			<motion.div
-				style={{ x: springX, y: springY }}
-				whileTap={{ scale: 0.95 }} // Tactile immediate micro-interaction
-			>
+			<motion.div style={{ x: springX, y: springY }} whileTap={{ scale: 0.95 }}>
 				{children}
 			</motion.div>
 		</div>
 	);
 }
 
-// Apple Intelligence Active Glow Border Component
+// --- APPLE / SIRI INTELLIGENCE GLOW BORDER ---
 interface AppleGlowBorderProps {
 	children: React.ReactNode;
 	isActive: boolean;
@@ -87,13 +138,11 @@ export function AppleGlowBorder({
 }: AppleGlowBorderProps) {
 	return (
 		<div
-			className={`relative rounded-full p-[1px] transition-all duration-300 ${className}`}
+			className={`relative rounded-full p-px transition-all duration-300 ${className}`}
 		>
-			{/* Siri / Apple Intelligence Liquid Spectrum Ring (Cyan, Purple, Pink) */}
 			<AnimatePresence>
 				{isActive && (
 					<>
-						{/* Outer Soft Ambient Blur */}
 						<motion.div
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 0.65 }}
@@ -101,7 +150,6 @@ export function AppleGlowBorder({
 							className="absolute inset-0 -z-10 rounded-full bg-[conic-gradient(from_0deg,#00E0FF_0%,#8B5CF6_35%,#FF2E63_70%,#00E0FF_100%)] blur-sm"
 							style={{ animation: "rotate-glow 5s linear infinite" }}
 						/>
-						{/* Crisp Inner High-contrast Stroke */}
 						<motion.div
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
@@ -119,14 +167,17 @@ export function AppleGlowBorder({
 	);
 }
 
+// --- NEWS CARD COMPONENT ---
 const NewsCard = ({
 	item,
 	isExpanded,
 	onToggleExpand,
+	onAnalyze,
 }: {
 	item: NewsItem;
 	isExpanded: boolean;
 	onToggleExpand: () => void;
+	onAnalyze: () => void;
 }) => {
 	const itemDate = new Date(item.pubDate);
 	const formattedDate = itemDate.toLocaleDateString("en-US", {
@@ -151,7 +202,6 @@ const NewsCard = ({
 			exit={{ opacity: 0, scale: 0.95 }}
 			className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5 backdrop-blur-md transition-all duration-300 hover:border-white/20 hover:bg-white/6 hover:shadow-[0_8px_32px_rgba(139,92,246,0.06)]"
 		>
-			{/* Meta details */}
 			<div className="flex items-center justify-between mb-2">
 				<span
 					className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold tracking-wider uppercase ${sourceColorClass}`}
@@ -163,41 +213,52 @@ const NewsCard = ({
 				</span>
 			</div>
 
-			{/* Article Header Content */}
 			<h2 className="text-[13px] font-semibold text-slate-100 group-hover:text-white transition-colors leading-snug">
 				{item.title}
 			</h2>
 
-			{/* Micro-Interaction / Detail Reveal */}
 			<div className="flex items-center justify-between mt-3.5 pt-2 border-t border-white/[0.04]">
-				<a
-					href={item.link}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="inline-flex items-center gap-1 text-[11px] font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
-				>
-					<span>Read Original</span>
-					<svg
-						className="h-3 w-3"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						strokeWidth={2}
+				<div className="flex items-center gap-3">
+					<a
+						href={item.link}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex items-center gap-1 text-[11px] font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
 					>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-						/>
-					</svg>
-				</a>
+						<span>Read</span>
+						<svg
+							className="h-3 w-3"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							strokeWidth={2}
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+							/>
+						</svg>
+					</a>
+
+					<button
+						onClick={onAnalyze}
+						className="inline-flex items-center gap-1 text-[11px] font-medium text-[#8B5CF6] hover:text-[#a78bfa] transition-colors cursor-pointer underline decoration-dotted"
+					>
+						<span className="relative flex h-1.5 w-1.5 mr-0.5">
+							<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+							<span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#8B5CF6]"></span>
+						</span>
+						<span>Analyze</span>
+					</button>
+				</div>
 
 				{item.descHTML && (
 					<button
 						onClick={onToggleExpand}
-						className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-white transition-colors"
+						className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-white transition-colors cursor-pointer"
 					>
-						<span>{isExpanded ? "Hide Preview" : "View Preview"}</span>
+						<span>{isExpanded ? "Hide" : "Preview"}</span>
 						<motion.svg
 							animate={{ rotate: isExpanded ? 180 : 0 }}
 							className="h-3.5 w-3.5"
@@ -216,7 +277,6 @@ const NewsCard = ({
 				)}
 			</div>
 
-			{/* HTML Description Drawer */}
 			{item.descHTML && (
 				<motion.div
 					initial={false}
@@ -237,10 +297,279 @@ const NewsCard = ({
 	);
 };
 
+// --- CHAT SHEET / BOTTOM DRAWER FOR SINGLE OR BULK SUMMARIES ---
+interface OllamaChatDrawerProps {
+	newsItems: NewsItem[]; // Can be single item or whole feed
+	mode: "single" | "bulk";
+	onClose: () => void;
+}
+
+function OllamaChatDrawer({ newsItems, mode, onClose }: OllamaChatDrawerProps) {
+	const { mutate: askOllama, isPending } = useOllamaNewsAgent();
+	const [freshMsg, setMessages] = useState<ChatMessage[]>([]);
+	const [input, setInput] = useState("");
+	const [apiError, setApiError] = useState<string | null>(null);
+	const threadEndRef = useRef<HTMLDivElement>(null);
+	const messages = useDeferredValue(freshMsg);
+	useEffect(() => {
+		if (newsItems.length > 0) {
+			setMessages([]);
+			setApiError(null);
+
+			const systemPrompt =
+				"You are a professional local news intelligence agent. Formulate dense, objective summaries.";
+			let prompt = "";
+
+			if (mode === "single" && newsItems.length === 1) {
+				const item = newsItems[0];
+				prompt = `Generate a concise 3-sentence summary of this news article. Use bullet points for key implications if relevant.
+Title: ${item.title}
+Source: ${item.source}
+Context: ${item.descHTML || ""}`;
+			} else {
+				// Bulk synthesis across the compiled feed (limiting to avoid token overload)
+				const truncatedList = newsItems.slice(0, 6);
+				const formattedArticles = truncatedList
+					.map(
+						(item, idx) =>
+							`[Article #${idx + 1}] Source: ${item.source}\nTitle: ${item.title}\nContext: ${item.descHTML ? item.descHTML.replace(/<[^>]*>/g, "").substring(0, 200) : "No context"}`,
+					)
+					.join("\n\n");
+
+				prompt = `You are analyzing a live stream of news updates. Synthesize the following news articles into a single, cohesive brief. 
+Identify the top 3 overarching narratives or key trends in the news right now. Organize them using concise bullet points under thematic headers.
+
+Articles to analyze:
+${formattedArticles}`;
+			}
+
+			askOllama(
+				{ prompt, system: systemPrompt },
+				{
+					onSuccess: (summary) => {
+						setMessages([{ role: "assistant", content: summary }]);
+					},
+					onError: (err) => {
+						setApiError(err.message);
+					},
+				},
+			);
+		}
+	}, [newsItems, mode, askOllama]);
+
+	useEffect(() => {
+		threadEndRef.current?.scrollIntoView({ behavior: "smooth" });
+	}, [messages, isPending]);
+
+	const handleSendMessage = (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!input.trim() || isPending) return;
+
+		const userMsg: ChatMessage = { role: "user", content: input };
+		const updatedHistory = [...messages, userMsg];
+		setMessages(updatedHistory);
+		setInput("");
+		setApiError(null);
+
+		const formattedHistory = updatedHistory
+			.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+			.join("\n");
+
+		// Provide full context based on mode for follow-up conversation flow
+		const contextualScope =
+			mode === "single"
+				? `Article Context: ${newsItems[0]?.title} - ${newsItems[0]?.descHTML || ""}`
+				: `Analyzed Stream Context: ${newsItems.map((item) => item.title).join(", ")}`;
+
+		const chatPrompt = `Scope of conversation:
+${contextualScope}
+
+Conversation logs:
+${formattedHistory}
+
+Assistant: Respond to the last User query directly, incorporating intelligence context when useful.`;
+
+		askOllama(
+			{ prompt: chatPrompt },
+			{
+				onSuccess: (reply) => {
+					setMessages((prev) => [
+						...prev,
+						{ role: "assistant", content: reply },
+					]);
+				},
+				onError: (err) => {
+					setApiError(err.message);
+				},
+			},
+		);
+	};
+
+	return (
+		<motion.div
+			initial={{ y: "100%" }}
+			animate={{ y: 0 }}
+			exit={{ y: "100%" }}
+			transition={{ type: "spring", stiffness: 220, damping: 22 }}
+			className="absolute bottom-0 left-0 right-0 h-[85%] z-40 flex flex-col rounded-t-3xl border-t border-white/15 bg-[#05050A]/95 backdrop-blur-2xl shadow-[0_-12px_40px_rgba(0,0,0,0.8)] overflow-hidden m-3"
+		>
+			<div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
+				<div className="absolute top-0 left-1/2 -translate-x-1/2 h-[1px] w-2/3 bg-gradient-to-r from-transparent via-[#8B5CF6] to-transparent opacity-50" />
+				<div className="absolute -top-12 left-1/3 h-32 w-32 rounded-full bg-[#8B5CF6]/10 blur-2xl" />
+			</div>
+
+			<header className="flex items-center justify-between border-b border-white/[0.08] bg-white/[0.01] px-5 py-3 shrink-0">
+				<div className="flex-1 pr-4">
+					<span className="font-mono text-[9px] uppercase tracking-widest text-[#94A3B8] font-bold block">
+						{mode === "single"
+							? "Single Update Briefing"
+							: "Consolidated Stream Synthesis"}
+					</span>
+					<h3 className="text-xs font-semibold text-white truncate max-w-[280px]">
+						{mode === "single"
+							? newsItems[0]?.title
+							: `Synthesizing ${newsItems.length} active stream items`}
+					</h3>
+				</div>
+
+				<MagneticWrapper>
+					<button
+						onClick={onClose}
+						className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-400 hover:text-white transition-colors cursor-pointer"
+					>
+						<svg
+							className="h-4 w-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							strokeWidth={2}
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</button>
+				</MagneticWrapper>
+			</header>
+
+			{isPending && (
+				<div className="h-0.5 w-full bg-white/[0.02] relative overflow-hidden shrink-0">
+					<motion.div
+						initial={{ left: "-100%" }}
+						animate={{ left: "100%" }}
+						transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+						className="absolute h-full w-1/3 bg-gradient-to-r from-[#00E0FF] via-[#8B5CF6] to-[#FF2E63]"
+					/>
+				</div>
+			)}
+
+			<div className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5 glass-scrollbar">
+				{messages.length === 0 && !apiError && (
+					<div className="h-full flex flex-col items-center justify-center text-center space-y-2">
+						<span className="relative flex h-3 w-3">
+							<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00E0FF] opacity-75"></span>
+							<span className="relative inline-flex rounded-full h-3 w-3 bg-[#00E0FF]"></span>
+						</span>
+						<p className="text-xs font-mono text-slate-400">
+							{mode === "single"
+								? "Initiating single update summary..."
+								: "Analyzing and compiling active news stream..."}
+						</p>
+					</div>
+				)}
+
+				{apiError && (
+					<div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3.5 text-xs text-rose-200">
+						<p className="font-semibold mb-1">Local Model Error</p>
+						<p className="text-slate-400 leading-normal">{apiError}</p>
+					</div>
+				)}
+				{messages.map((s) => (
+					<ReactMarkdown>
+						{s.content || "AI response will stream here..."}
+					</ReactMarkdown>
+				))}
+				<LegendList
+					data={messages}
+					keyExtractor={(item, idx) => `${idx + item.content}`}
+					recycleItems={true}
+					ItemSeparatorComponent={() => <div className="min-h-3 p-3" />}
+					renderItem={({ item: msg, index }) => {
+						const isUser = msg.role === "user";
+						return (
+							<motion.div
+								key={index}
+								initial={{ opacity: 0, y: 8 }}
+								animate={{ opacity: 1, y: 0 }}
+								className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+							>
+								<div
+									className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed border ${
+										isUser
+											? "bg-[#8B5CF6]/15 border-[#8B5CF6]/30 text-white"
+											: "bg-white/3 border-white/8 text-slate-200"
+									}`}
+								>
+									<div className="whitespace-pre-wrap">{msg.content}</div>
+								</div>
+							</motion.div>
+						);
+					}}
+				/>
+
+				<div ref={threadEndRef} />
+			</div>
+
+			<form
+				onSubmit={handleSendMessage}
+				className="p-4 border-t border-white/[0.08] bg-[#05050A] shrink-0"
+			>
+				<AppleGlowBorder isActive={input.length > 0}>
+					<div className="flex h-10 w-full items-center px-3.5 gap-2.5">
+						<input
+							type="text"
+							value={input}
+							onChange={(e) => setInput(e.target.value)}
+							placeholder={
+								isPending ? "Generating..." : "Ask regarding updates..."
+							}
+							disabled={isPending}
+							className="w-full bg-transparent text-[13px] text-white outline-none placeholder-slate-500 font-mono disabled:opacity-50"
+						/>
+						<MagneticWrapper>
+							<button
+								type="submit"
+								disabled={!input.trim() || isPending}
+								className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-black hover:bg-slate-200 transition-colors disabled:opacity-30 cursor-pointer"
+							>
+								<svg
+									className="h-3.5 w-3.5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									strokeWidth={3}
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										d="M14 5l7 7m0 0l-7 7m7-7H3"
+									/>
+								</svg>
+							</button>
+						</MagneticWrapper>
+					</div>
+				</AppleGlowBorder>
+			</form>
+		</motion.div>
+	);
+}
+
+// --- NEWS DASHBOARD MAIN CONTAINER ---
 export default function NewsDashboard() {
 	const queryResults = useNewsInternationalFeeds();
 
-	// UI states
 	const [searchTerm, setSearchTerm] = useState("");
 	const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
 	const [activeSource, setActiveSource] = useState<
@@ -249,7 +578,9 @@ export default function NewsDashboard() {
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
 	const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
 
-	// Extract individual queries
+	const [chatMode, setChatMode] = useState<"single" | "bulk">("single");
+	const [activeChatItems, setActiveChatItems] = useState<NewsItem[]>([]);
+
 	const [googleQuery, yahooQuery, bbcQuery] = queryResults;
 
 	const handleRefetchAll = async () => {
@@ -309,7 +640,6 @@ export default function NewsDashboard() {
 		return list;
 	}, [uniqueItems, activeSource, sortBy]);
 
-	// 3. Apply Fuzzy searching using the useFuse hook
 	const { results: freshFeed } = useFuse({
 		items: filteredAndSortedBase,
 		searchQuery: searchTerm,
@@ -321,33 +651,48 @@ export default function NewsDashboard() {
 
 	const finalFeed = useDeferredValue(freshFeed);
 
-	// Loading and error states safely managed across multi-queries
+	const finalFeedItems = useMemo(() => {
+		return (finalFeed || []).map((f) => f.item);
+	}, [finalFeed]);
+
 	const isLoading =
 		googleQuery.isFetching || yahooQuery.isFetching || bbcQuery.isFetching;
 	const isInitialLoading =
 		googleQuery.isLoading && yahooQuery.isLoading && bbcQuery.isLoading;
 	const isError = googleQuery.isError && yahooQuery.isError && bbcQuery.isError;
 
+	const handleSummarizeEntireFeed = () => {
+		if (finalFeedItems.length === 0) return;
+		setChatMode("bulk");
+		setActiveChatItems(finalFeedItems);
+	};
+
+	const handleSummarizeSingleCard = (item: NewsItem) => {
+		setChatMode("single");
+		setActiveChatItems([item]);
+	};
+
+	const ollamaLLMActive = useOllamaSelectedModelRead();
+
 	return (
-		<div className="relative mx-auto flex flex-col overflow-hidden border border-white/10 bg-[#05050A] text-[#F8FAFC] shadow-2xl font-sans">
+		<div className="relative mx-auto flex flex-col overflow-hidden border border-white/10 bg-[#05050A] text-[#F8FAFC] shadow-2xl font-sans h-150">
+			{/* Ambient Aurora Meshes */}
 			<div className="absolute inset-0 -z-20 overflow-hidden pointer-events-none">
 				<div
 					className="absolute -left-20 -top-20 h-60 w-60 rounded-full bg-[#00E0FF]/15 blur-[75px]"
 					style={{ animation: "pulse-mesh 12s ease-in-out infinite" }}
 				/>
-
 				<div
 					className="absolute -right-10 top-37.5 h-48 w-48 rounded-full bg-[#8B5CF6]/15 blur-[80px]"
 					style={{ animation: "float-mesh 10s ease-in-out infinite" }}
 				/>
-
 				<div
 					className="absolute -bottom-10 -right-2.5 h-52 w-52 rounded-full bg-[#FF2E63]/10 blur-[90px]"
 					style={{ animation: "pulse-mesh 15s ease-in-out infinite" }}
 				/>
 			</div>
 
-			<header className="flex items-center justify-between border-b border-white/[0.08] bg-white/[0.02] px-5 py-4 backdrop-blur-md z-10">
+			<header className="flex items-center justify-between border-b border-white/8 bg-white/2 px-5 py-4 backdrop-blur-md z-10">
 				<div>
 					<div className="flex items-center gap-1.5">
 						<span className="relative flex h-2 w-2">
@@ -363,12 +708,11 @@ export default function NewsDashboard() {
 					</h1>
 				</div>
 
-				{/* Refetch Node built using Magnetic Spring Physics */}
 				<MagneticWrapper>
 					<button
 						onClick={handleRefetchAll}
 						disabled={isLoading}
-						className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-[#F8FAFC] backdrop-blur-md transition-all hover:bg-white/[0.1] hover:border-white/30 disabled:opacity-50"
+						className="flex h-9 w-9 hover:shadow-sm hover:shadow-amber-400 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-[#F8FAFC] backdrop-blur-md transition-all hover:bg-white/[0.1] hover:border-white/30 disabled:opacity-50 cursor-pointer"
 						title="Refetch feeds"
 					>
 						<svg
@@ -390,7 +734,6 @@ export default function NewsDashboard() {
 			</header>
 
 			<div className="shrink-0 flex flex-col gap-3 p-4 border-b border-white/6 bg-[#05050A]/90 backdrop-blur-md sticky top-0 z-20">
-				{/* Search Input enclosed inside an Apple Intelligence Animated Glow */}
 				<AppleGlowBorder isActive={isSearchFocused}>
 					<div className="flex h-10 w-full items-center px-3.5 gap-2.5">
 						<svg
@@ -414,12 +757,12 @@ export default function NewsDashboard() {
 							onChange={(e) => setSearchTerm(e.target.value)}
 							onFocus={() => setIsSearchFocused(true)}
 							onBlur={() => setIsSearchFocused(false)}
-							className="w-full bg-transparent text-[13px] text-white outline-none placeholder-slate-400 font-mono placeholder:font-mono"
+							className="w-full bg-transparent text-[13px] text-white outline-none placeholder-slate-400 font-mono"
 						/>
 						{searchTerm && (
 							<button
 								onClick={() => setSearchTerm("")}
-								className="text-slate-400 hover:text-white"
+								className="text-slate-400 hover:text-white cursor-pointer"
 							>
 								<svg
 									className="h-4 w-4"
@@ -439,9 +782,7 @@ export default function NewsDashboard() {
 					</div>
 				</AppleGlowBorder>
 
-				{/* Filters and Sorting Sub-Bar */}
 				<div className="flex items-center justify-between text-xs text-slate-400">
-					{/* Source Tabs */}
 					<div className="flex gap-1 bg-white/[0.03] p-0.5 rounded-lg border border-white/[0.05]">
 						{(["all", "Google News", "Yahoo News", "BBC News"] as const).map(
 							(source) => {
@@ -464,12 +805,11 @@ export default function NewsDashboard() {
 						)}
 					</div>
 
-					{/* Sort Order Action Switch */}
 					<button
 						onClick={() =>
 							setSortBy((prev) => (prev === "newest" ? "oldest" : "newest"))
 						}
-						className="flex items-center gap-1 rounded-lg border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.06] hover:text-white px-2 py-1 transition-all"
+						className="flex items-center gap-1 rounded-lg border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.06] hover:text-white px-2 py-1 transition-all cursor-pointer"
 					>
 						<span>{sortBy === "newest" ? "Newest" : "Oldest"}</span>
 						<svg
@@ -489,12 +829,12 @@ export default function NewsDashboard() {
 				</div>
 			</div>
 
+			{/* Main Stream Area */}
 			<div
 				className="flex-1 min-h-0 relative px-4 py-1"
 				style={{ height: "calc(600px - 210px)", minHeight: 0 }}
 			>
 				<AnimatePresence mode="popLayout">
-					{/* Initial Loading Skeletons */}
 					{isInitialLoading && (
 						<div className="space-y-3 mt-2">
 							{[1, 2, 3].map((n) => (
@@ -510,65 +850,31 @@ export default function NewsDashboard() {
 						</div>
 					)}
 
-					{/* Unified Error Container */}
 					{isError && !isInitialLoading && (
 						<motion.div
 							initial={{ opacity: 0, y: 10 }}
 							animate={{ opacity: 1, y: 0 }}
 							className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 text-center text-slate-300 mt-2"
 						>
-							<svg
-								className="mx-auto h-8 w-8 text-rose-400/80 mb-2"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								strokeWidth={1.5}
-							>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-								/>
-							</svg>
 							<p className="text-sm font-semibold text-rose-200">
 								Unable to load feeds
 							</p>
-							<p className="text-xs text-slate-400 mt-1">
-								Please verify internet connectivity and retry.
-							</p>
 							<button
 								onClick={handleRefetchAll}
-								className="mt-3 inline-flex items-center rounded-lg bg-white/[0.06] border border-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/[0.12]"
+								className="mt-3 inline-flex items-center rounded-lg bg-white/[0.06] border border-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/[0.12] cursor-pointer"
 							>
 								Retry Stream
 							</button>
 						</motion.div>
 					)}
 
-					{/* Empty Search Results State */}
 					{!isInitialLoading && finalFeed?.length === 0 && (
 						<motion.div
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
 							className="text-center py-10 text-slate-400"
 						>
-							<svg
-								className="mx-auto h-10 w-10 text-slate-500 mb-2"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								strokeWidth={1.5}
-							>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-								/>
-							</svg>
 							<p className="text-sm font-semibold">No results match filters</p>
-							<p className="text-xs text-slate-500 mt-1">
-								Refine your search input or source switches.
-							</p>
 						</motion.div>
 					)}
 
@@ -586,15 +892,15 @@ export default function NewsDashboard() {
 							ItemSeparatorComponent={() => <div className="min-h-3 p-3" />}
 							renderItem={({ item: news }) => {
 								const item = news.item;
+								const idKey = item.id || item.link;
 								return (
 									<NewsCard
 										item={item}
-										isExpanded={expandedItemId === item.id}
+										isExpanded={expandedItemId === idKey}
 										onToggleExpand={() =>
-											setExpandedItemId(
-												expandedItemId === item.id ? null : item.id,
-											)
+											setExpandedItemId(expandedItemId === idKey ? null : idKey)
 										}
+										onAnalyze={() => handleSummarizeSingleCard(item)}
 									/>
 								);
 							}}
@@ -603,21 +909,60 @@ export default function NewsDashboard() {
 				</AnimatePresence>
 			</div>
 
-			{/* 5. Apple Liquid Floating Bottom Action Bar (Simulating the 80px bottom nav offset) */}
+			{/* Floating Bottom Nav Container with "Synthesize Stream" AI trigger */}
 			<div className="fixed bottom-4 left-4 right-4 h-12 z-10">
-				<div className="flex h-full items-center justify-between rounded-full border border-white/15 bg-white/[0.05] px-4 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+				<div className="flex h-full items-center justify-between rounded-full border border-white/15 bg-white/[0.05] px-3.5 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
 					<div className="flex items-center gap-2">
-						<span className="inline-flex h-2.5 w-2.5 items-center justify-center rounded-full bg-amber-400 ring-4 ring-orange-500/25 animate-pulse" />
+						<span className="inline-flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-400 ring-4 ring-emerald-500/25 animate-pulse" />
 						<span className="text-[11px] font-semibold text-slate-300">
-							Ollama Feed Agent: <span className="text-white">Active</span>
+							Ollama Feed Agent:{" "}
+							<span className="text-white font-mono text-[10px] uppercase">
+								{ollamaLLMActive}
+							</span>
 						</span>
 					</div>
 
-					<span className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-widest">
-						{finalFeed?.length} Stream items
-					</span>
+					{/* Siri/Glow styled feed synthesis trigger */}
+					{finalFeedItems.length > 0 && (
+						<button
+							onClick={handleSummarizeEntireFeed}
+							className="relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-bold text-white bg-white/6 border border-white/10 hover:bg-white/12 duration-300 cursor-pointer overflow-hidden shadow-[0_0_12px_rgba(139,92,246,0.15)] hover:inset-shadow hover:shadow-amber-400 transition-all"
+						>
+							{/* Soft internal hover light glow */}
+							<div className="absolute inset-0 bg-linear-to-r from-[#00E0FF]/10 via-[#8B5CF6]/10 to-[#FF2E63]/10 opacity-60 pointer-events-none" />
+							<Summary size={14} color="#00E0FF" />
+							<span>
+								Summarize {finalFeedItems?.length} Stream
+								{finalFeedItems?.length > 1 ? "s" : ""}
+							</span>
+						</button>
+					)}
 				</div>
 			</div>
+
+			{/* Translucent Backdrop Blur layer */}
+			<AnimatePresence>
+				{activeChatItems.length > 0 && (
+					<motion.div
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						onClick={() => setActiveChatItems([])}
+						className="absolute inset-0 bg-black/40 backdrop-blur-sm z-30 pointer-events-auto"
+					/>
+				)}
+			</AnimatePresence>
+
+			{/* Unified Chat Drawer */}
+			<AnimatePresence>
+				{activeChatItems.length > 0 && (
+					<OllamaChatDrawer
+						newsItems={activeChatItems}
+						mode={chatMode}
+						onClose={() => setActiveChatItems([])}
+					/>
+				)}
+			</AnimatePresence>
 		</div>
 	);
 }

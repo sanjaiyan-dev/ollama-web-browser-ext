@@ -45,3 +45,43 @@
 body {
 	background-color: #05050a;
 }
+
+/* Custom subtle scrollbar styling to sustain the glass aesthetic */
+.glass-scrollbar::-webkit-scrollbar {
+	width: 5px;
+}
+
+.glass-scrollbar::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.glass-scrollbar::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 9999px;
+	transition: background 0.3s ease;
+}
+
+.glass-scrollbar::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.18);
+}
+
+/* Mesh float & pulse transitions */
+@keyframes float-mesh {
+	0%,
+	100% {
+		transform: translateY(0px) scale(1);
+	}
+	50% {
+		transform: translateY(-15px) scale(1.05);
+	}
+}
+
+@keyframes pulse-mesh {
+	0%,
+	100% {
+		opacity: 0.12;
+	}
+	50% {
+		opacity: 0.18;
+	}
+}
