@@ -36,7 +36,6 @@ export function useOllamaNewsAgent() {
 			[OLLAMA_BROWSER_EXT_REACTQUERY_KEY, "useOllamaNewsAgent"],
 			{
 				gcTime: CACHE_DURATION_MS,
-
 				staleTime: CACHE_DURATION_MS,
 			},
 		);
@@ -60,7 +59,6 @@ export function useOllamaNewsAgent() {
 			] as const;
 
 			if (!bypassCache) {
-				// Checks both in-memory cache and automatically pulls from browser.storage.local
 				const cachedResponse = queryClient.getQueryData<string>(cacheKey);
 				if (cachedResponse) {
 					setStreamedText(cachedResponse);
@@ -92,6 +90,7 @@ export function useOllamaNewsAgent() {
 						prompt: prompt,
 						system: system,
 						stream: true,
+						think: false,
 					}),
 				});
 			} catch (err: any) {
