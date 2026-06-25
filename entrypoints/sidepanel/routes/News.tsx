@@ -14,14 +14,15 @@ import React, {
 	useRef,
 	useState,
 	useEffect,
+	startTransition,
 } from "react";
 import { LegendList } from "@legendapp/list/react";
 import { useFuse } from "react-fusejs";
-import { useMutation } from "@tanstack/react-query";
 import "./styles/News.css";
 import { Summary } from "lucide-react";
 import { useOllamaSelectedModelRead } from "@/hooks/store";
 import ReactMarkdown from "react-markdown";
+import { useOllamaNewsAgent } from "@/hooks/query/useOllamaNewsAgent";
 
 // --- CUSTOM OLLAMA REACT-QUERY HOOK ---
 export interface ChatMessage {
@@ -34,43 +35,78 @@ interface OllamaGeneratePayload {
 	system?: string;
 }
 
-export function useOllamaNewsAgent() {
-	return useMutation<string, Error, OllamaGeneratePayload>({
-		mutationKey: ["ollama-generate-bulk"],
-		mutationFn: async ({ prompt, system }) => {
-			const endpoint = "http://127.0.0.1:11434/api/generate";
-			try {
-				const response = await fetch(endpoint, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						model: "gemma4:latest", // Tailor this to your active local model (e.g., llama3, mistral)
-						prompt: prompt,
-						system: system,
-						stream: false,
-					}),
-				});
+interface TypewriterOptions {
+	speedMs?: number;
+}
 
-				if (!response.ok) {
-					const errorText = await response.text();
-					throw new Error(
-						`Ollama error (${response.status}): ${errorText || response.statusText}`,
-					);
-				}
+export function useSmoothTypewriter(
+	targetText: string,
+	options: TypewriterOptions = {},
+) {
+	const { speedMs = 15 } = options;
+	const [displayedText, setDisplayedText] = useState("");
+	const indexRef = useRef(0);
+	const requestRef = useRef<number | null>(null);
+	const lastUpdateTimeRef = useRef(0);
 
-				const data = await response.json();
-				return data.response as string;
-			} catch (err: any) {
-				throw new Error(
-					err.message && err.message.includes("Ollama error")
-						? err.message
-						: "Cannot reach Ollama. Verify Ollama is running locally and CORS is enabled via `OLLAMA_ORIGINS=*`.",
-				);
+	useEffect(() => {
+		if (!targetText) {
+			setDisplayedText("");
+			indexRef.current = 0;
+			lastUpdateTimeRef.current = 0;
+			if (requestRef.current) {
+				cancelAnimationFrame(requestRef.current);
+				requestRef.current = null;
 			}
-		},
-	});
+		}
+	}, [targetText]);
+
+	useEffect(() => {
+		if (!targetText) return;
+
+		const animate = (timestamp: number) => {
+			if (!lastUpdateTimeRef.current) {
+				lastUpdateTimeRef.current = timestamp;
+			}
+
+			const elapsed = timestamp - lastUpdateTimeRef.current;
+
+			if (elapsed >= speedMs) {
+				const remainingChars = targetText.length - indexRef.current;
+
+				if (remainingChars > 0) {
+					const step = Math.max(
+						1,
+						Math.min(remainingChars, Math.ceil(remainingChars / 12)),
+					);
+					indexRef.current += step;
+					startTransition(() => {
+						setDisplayedText(targetText.slice(0, indexRef.current));
+					});
+					lastUpdateTimeRef.current = timestamp;
+				}
+			}
+
+			if (indexRef.current < targetText.length) {
+				requestRef.current = requestAnimationFrame(animate);
+			} else {
+				requestRef.current = null;
+			}
+		};
+
+		if (indexRef.current < targetText.length && !requestRef.current) {
+			requestRef.current = requestAnimationFrame(animate);
+		}
+
+		return () => {
+			if (requestRef.current) {
+				cancelAnimationFrame(requestRef.current);
+				requestRef.current = null;
+			}
+		};
+	}, [targetText, speedMs]);
+
+	return displayedText;
 }
 
 // --- MAGNETIC PHYSICS WRAPPER ---
@@ -305,12 +341,36 @@ interface OllamaChatDrawerProps {
 }
 
 function OllamaChatDrawer({ newsItems, mode, onClose }: OllamaChatDrawerProps) {
-	const { mutate: askOllama, isPending } = useOllamaNewsAgent();
+	const {
+		mutate: askOllama,
+		isPending,
+		isStreaming,
+		streamedText,
+	} = useOllamaNewsAgent();
 	const [freshMsg, setMessages] = useState<ChatMessage[]>([]);
 	const [input, setInput] = useState("");
 	const [apiError, setApiError] = useState<string | null>(null);
 	const threadEndRef = useRef<HTMLDivElement>(null);
 	const messages = useDeferredValue(freshMsg);
+
+	const animatedStreamedText = useSmoothTypewriter(streamedText, {
+		speedMs: 12,
+	});
+
+	const displayMessages = useMemo(() => {
+		const isCurrentlyStreaming = isStreaming && streamedText;
+		if (isCurrentlyStreaming) {
+			return [
+				...messages,
+				{ role: "assistant" as const, content: animatedStreamedText || "..." },
+			];
+		}
+		if (isPending && !streamedText) {
+			return [...messages, { role: "assistant" as const, content: "..." }];
+		}
+		return messages;
+	}, [messages, isStreaming, streamedText, animatedStreamedText, isPending]);
+
 	useEffect(() => {
 		if (newsItems.length > 0) {
 			setMessages([]);
@@ -322,10 +382,11 @@ function OllamaChatDrawer({ newsItems, mode, onClose }: OllamaChatDrawerProps) {
 
 			if (mode === "single" && newsItems.length === 1) {
 				const item = newsItems[0];
-				prompt = `Generate a concise 3-sentence summary of this news article. Use bullet points for key implications if relevant.
+				prompt =
+					`Generate a concise 3-sentence summary of this news article. Use bullet points for key implications if relevant.
 Title: ${item.title}
 Source: ${item.source}
-Context: ${item.descHTML || ""}`;
+Context: ${item.descHTML || ""}`.trim();
 			} else {
 				// Bulk synthesis across the compiled feed (limiting to avoid token overload)
 				const truncatedList = newsItems.slice(0, 6);
@@ -336,11 +397,12 @@ Context: ${item.descHTML || ""}`;
 					)
 					.join("\n\n");
 
-				prompt = `You are analyzing a live stream of news updates. Synthesize the following news articles into a single, cohesive brief. 
+				prompt =
+					`You are analyzing a live stream of news updates. Synthesize the following news articles into a single, cohesive brief. 
 Identify the top 3 overarching narratives or key trends in the news right now. Organize them using concise bullet points under thematic headers.
 
 Articles to analyze:
-${formattedArticles}`;
+${formattedArticles}`.trim();
 			}
 
 			askOllama(
@@ -357,9 +419,10 @@ ${formattedArticles}`;
 		}
 	}, [newsItems, mode, askOllama]);
 
+	// Auto-scroll runs on computed text changes
 	useEffect(() => {
 		threadEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages, isPending]);
+	}, [displayMessages]);
 
 	const handleSendMessage = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -387,7 +450,9 @@ ${contextualScope}
 Conversation logs:
 ${formattedHistory}
 
-Assistant: Respond to the last User query directly, incorporating intelligence context when useful.`;
+Assistant: Respond to the last User query directly, incorporating intelligence context when useful.
+Today's date and time is ${new Date().toString()}
+`.trim();
 
 		askOllama(
 			{ prompt: chatPrompt },
@@ -466,7 +531,7 @@ Assistant: Respond to the last User query directly, incorporating intelligence c
 			)}
 
 			<div className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5 glass-scrollbar">
-				{messages.length === 0 && !apiError && (
+				{displayMessages.length === 0 && !apiError && (
 					<div className="h-full flex flex-col items-center justify-center text-center space-y-2">
 						<span className="relative flex h-3 w-3">
 							<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00E0FF] opacity-75"></span>
@@ -486,21 +551,14 @@ Assistant: Respond to the last User query directly, incorporating intelligence c
 						<p className="text-slate-400 leading-normal">{apiError}</p>
 					</div>
 				)}
-				{messages.map((s) => (
-					<ReactMarkdown>
-						{s.content || "AI response will stream here..."}
-					</ReactMarkdown>
-				))}
+
 				<LegendList
-					data={messages}
-					keyExtractor={(item, idx) => `${idx + item.content}`}
-					recycleItems={true}
-					ItemSeparatorComponent={() => <div className="min-h-3 p-3" />}
-					renderItem={({ item: msg, index }) => {
+					data={displayMessages}
+					renderItem={({ item }) => {
+						const msg = item;
 						const isUser = msg.role === "user";
 						return (
 							<motion.div
-								key={index}
 								initial={{ opacity: 0, y: 8 }}
 								animate={{ opacity: 1, y: 0 }}
 								className={`flex ${isUser ? "justify-end" : "justify-start"}`}
@@ -512,11 +570,19 @@ Assistant: Respond to the last User query directly, incorporating intelligence c
 											: "bg-white/3 border-white/8 text-slate-200"
 									}`}
 								>
-									<div className="whitespace-pre-wrap">{msg.content}</div>
+									<ReactMarkdown>{msg.content}</ReactMarkdown>
 								</div>
 							</motion.div>
 						);
 					}}
+					keyExtractor={(item, idx) => idx + item.role}
+					maintainScrollAtEnd
+					showsVerticalScrollIndicator={true}
+					recycleItems
+					className="h-full overflow-y-auto no-scrollbar"
+					style={{ scrollbarWidth: "none" }}
+					ItemSeparatorComponent={() => <div className="min-h-3 p-3" />}
+					ListFooterComponent={<div className="h-7 w-full" />}
 				/>
 
 				<div ref={threadEndRef} />
