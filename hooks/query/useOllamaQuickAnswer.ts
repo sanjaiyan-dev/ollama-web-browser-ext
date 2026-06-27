@@ -1,13 +1,83 @@
-import { useQuery } from "@tanstack/react-query";
+import { experimental_streamedQuery, useQuery } from "@tanstack/react-query";
 import {
 	OLLAMA_BROWSER_EXT_REACTQUERY_KEY,
 	useBrowserCurrentActiveTab,
 } from "../query";
 import { useOllamaSelectedModelRead, useOllamaEndPointRead } from "../store";
 import { useDeferredValue } from "react";
-import axios from "axios";
-import { useLocation } from "react-router";
 import { useActiveTab } from "../utils";
+
+interface StreamFuncParams {
+	ollamaEndpoint: string;
+	ollamaModelName: string;
+	thinking?: boolean;
+	fullPrompt: string;
+	systemInstruction: string;
+	signal: AbortSignal;
+}
+
+async function* streamAIResponse({
+	fullPrompt,
+	signal,
+	ollamaEndpoint,
+	ollamaModelName,
+	systemInstruction,
+	thinking,
+}: StreamFuncParams) {
+	const response = await fetch(`${ollamaEndpoint}/api/generate`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			model: ollamaModelName || "gemma4:latest",
+			stream: true,
+			think: thinking,
+			prompt: fullPrompt,
+			system: systemInstruction,
+		}),
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Ollama request failed: ${response.statusText}`);
+	}
+
+	const reader = response.body?.getReader();
+	if (!reader) {
+		throw new Error("No readable stream body found on response.");
+	}
+
+	const decoder = new TextDecoder();
+	let buffer = "";
+
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+
+			if (done) break;
+
+			buffer += decoder.decode(value, { stream: true });
+			const lines = buffer.split("\n");
+
+			// Save the trailing incomplete line back to the buffer
+			buffer = lines.pop() || "";
+
+			for (const line of lines) {
+				if (line.trim()) {
+					try {
+						const data = JSON.parse(line);
+						yield data;
+					} catch (e) {
+						console.warn("Invalid JSON chunk:", line);
+					}
+				}
+			}
+		}
+	} finally {
+		reader.releaseLock();
+	}
+}
 
 export const useOllamaQuickAnswer = ({
 	question,
@@ -15,13 +85,12 @@ export const useOllamaQuickAnswer = ({
 	trigger,
 }: {
 	question: string;
-	thinking: boolean;
+	thinking?: boolean;
 	trigger: boolean;
 }) => {
 	const ollamaEndPoint = useOllamaEndPointRead();
 	const ollamaModelName = useOllamaSelectedModelRead();
 
-	const { pathname } = useLocation();
 	const activeTab = useActiveTab();
 	const currentTabURL = activeTab?.url;
 	const { data: pageContext } = useBrowserCurrentActiveTab();
@@ -42,7 +111,7 @@ Constraints: No preamble, no conversational filler, no "Based on the text."
 <CONTEXT>
 TITLE: "${docTitle}"
 URL: ${activeTab?.url || "N/A"}
-CONTENT: "${docText}"
+CONTENT: 
 """
 ${truncatedText}
 """
@@ -74,6 +143,7 @@ You are an Advanced Technical Browser Assistant. Your purpose is to synthesize h
 3. Use Markdown multi-line code blocks (\`\`\`lang) for larger blocks of code.
 4. OUTPUT ONLY THE FINAL RESPONSE.
 `.trim();
+
 	return useQuery({
 		queryKey: [
 			OLLAMA_BROWSER_EXT_REACTQUERY_KEY,
@@ -82,42 +152,25 @@ You are an Advanced Technical Browser Assistant. Your purpose is to synthesize h
 			deferredQuestion,
 			ollamaModelName,
 			currentTabURL,
-			pathname,
 		] as const,
-		queryFn: async ({ signal }) => {
-			if (!deferredQuestion.trim())
-				throw new Error("Empty question string provided.");
-			if (!ollamaModelName) throw new Error("No model selected.");
-			try {
-				const response = await axios.post(
-					`${ollamaEndPoint}/api/generate`,
-					{
-						model: ollamaModelName || "gemma4:latest",
-						stream: false,
-						think: thinking,
-						prompt: fullPrompt,
-						system: systemInstruction,
-					},
-					{
-						headers: {
-							"Content-Type": "application/json",
-						},
-						signal,
-					},
-				);
+		queryFn: experimental_streamedQuery({
+			streamFn: async ({ signal }) => {
+				if (!deferredQuestion.trim())
+					throw new Error("Empty question string provided.");
+				if (!ollamaModelName) throw new Error("No model selected.");
 
-				return response.data.response as string;
-			} catch (error: any) {
-				if (axios.isAxiosError(error)) {
-					const status = error.response?.status;
-					const statusText = error.response?.statusText || error.message;
-					throw new Error(
-						`HTTP Error ${status || "Connection"}: ${statusText}`,
-					);
-				}
-				throw error;
-			}
-		},
+				return streamAIResponse({
+					fullPrompt,
+					signal,
+					systemInstruction,
+					thinking,
+					ollamaEndpoint: ollamaEndPoint,
+					ollamaModelName,
+				});
+			},
+			reducer: (acc: string, chunk: any) => acc + (chunk?.response || ""),
+			initialValue: "",
+		}),
 		enabled:
 			!!deferredQuestion && !!ollamaModelName && trigger && !!ollamaEndPoint,
 		staleTime: 1000 * 60 * 21,

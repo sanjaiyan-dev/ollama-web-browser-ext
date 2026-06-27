@@ -31,6 +31,7 @@ interface PopoverProps {
 }
 
 function parseInline(raw: string) {
+	"use memo";
 	const boldTokens = raw.split(/(\*\*.*?\*\*)/g);
 	return boldTokens.map((segment, i) => {
 		if (segment.startsWith("**") && segment.endsWith("**")) {
@@ -40,7 +41,7 @@ function parseInline(raw: string) {
 				</strong>
 			);
 		}
-		const codeTokens = segment.split(/(`.*?`)/g);
+		const codeTokens = segment.split(/(\`.*?\`)/g);
 		return codeTokens.map((sub, j) => {
 			if (sub.startsWith("`") && sub.endsWith("`")) {
 				return (
@@ -62,7 +63,6 @@ export default function OllamaQuickQuestionPopover({
 	onClose,
 	query,
 }: PopoverProps) {
-	"use memo";
 	const activeTab = useActiveTab();
 
 	// Active tab page context with destructuring for refetch and fetching state
@@ -89,7 +89,7 @@ export default function OllamaQuickQuestionPopover({
 	// Surface border coordinate coordinates for modern glow mechanics
 	const cardRef = useRef<HTMLDivElement>(null);
 	const [freshCoord, setMouseCoords] = useState({ x: 0, y: 0 });
-	const mouseCoords = useDeferredValue(freshCoord, { x: 0, y: 0 });
+	const mouseCoords = useDeferredValue(freshCoord);
 
 	useEffect(() => {
 		if (query) {
@@ -242,7 +242,6 @@ export default function OllamaQuickQuestionPopover({
 		<AnimatePresence>
 			{isOpen && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-					{/* Inject style layer inside document element safely */}
 					<style
 						dangerouslySetInnerHTML={{
 							__html: `
@@ -411,7 +410,7 @@ export default function OllamaQuickQuestionPopover({
 													"An unexpected error occurred."}
 											</p>
 										</div>
-									) : isGenerating ? (
+									) : isPending && !responseText ? (
 										<div className="space-y-2 animate-pulse mt-2">
 											<div className="h-3 w-4/5 bg-white/10 rounded" />
 											<div className="h-3 w-11/12 bg-white/10 rounded" />

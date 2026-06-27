@@ -88,8 +88,13 @@ export async function fetchGoogleNews(
 		const descEl = item.querySelector("description");
 		const descriptionHtml =
 			descEl?.innerHTML?.trim() || descEl?.textContent?.trim() || "";
-
-		const descHTML = DOMPurify.sanitize(descriptionHtml).trim();
+		const decodeHTMLEntities = (text: string) => {
+			const textArea = document.createElement("textarea");
+			textArea.innerHTML = text;
+			return textArea.value;
+		};
+		const decoded = decodeHTMLEntities(descriptionHtml);
+		const descHTML = DOMPurify.sanitize(decoded).trim();
 		return {
 			id,
 			title,

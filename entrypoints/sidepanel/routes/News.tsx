@@ -15,6 +15,7 @@ import React, {
 	useState,
 	useEffect,
 	startTransition,
+	useEffectEvent,
 } from "react";
 import { LegendList } from "@legendapp/list/react";
 import { useFuse } from "react-fusejs";
@@ -28,11 +29,6 @@ import { useOllamaNewsAgent } from "@/hooks/query/useOllamaNewsAgent";
 export interface ChatMessage {
 	role: "user" | "assistant";
 	content: string;
-}
-
-interface OllamaGeneratePayload {
-	prompt: string;
-	system?: string;
 }
 
 interface TypewriterOptions {
@@ -420,8 +416,11 @@ ${formattedArticles}`.trim();
 	}, [newsItems, mode, askOllama]);
 
 	// Auto-scroll runs on computed text changes
+	const scrollToLastMessage = useEffectEvent(() => {
+		threadEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
+	});
 	useEffect(() => {
-		threadEndRef.current?.scrollIntoView({ behavior: "smooth" });
+		scrollToLastMessage();
 	}, [displayMessages]);
 
 	const handleSendMessage = (e: React.FormEvent) => {
@@ -479,7 +478,7 @@ Today's date and time is ${new Date().toString()}
 			className="absolute bottom-0 left-0 right-0 h-[85%] z-40 flex flex-col rounded-t-3xl border-t border-white/15 bg-[#05050A]/95 backdrop-blur-2xl shadow-[0_-12px_40px_rgba(0,0,0,0.8)] overflow-hidden m-3"
 		>
 			<div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
-				<div className="absolute top-0 left-1/2 -translate-x-1/2 h-[1px] w-2/3 bg-gradient-to-r from-transparent via-[#8B5CF6] to-transparent opacity-50" />
+				<div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 bg-gradient-to-r from-transparent via-[#8B5CF6] to-transparent opacity-50" />
 				<div className="absolute -top-12 left-1/3 h-32 w-32 rounded-full bg-[#8B5CF6]/10 blur-2xl" />
 			</div>
 
@@ -590,7 +589,7 @@ Today's date and time is ${new Date().toString()}
 
 			<form
 				onSubmit={handleSendMessage}
-				className="p-4 border-t border-white/[0.08] bg-[#05050A] shrink-0"
+				className="p-4 border-t border-white/8 bg-[#05050A] shrink-0"
 			>
 				<AppleGlowBorder isActive={input.length > 0}>
 					<div className="flex h-10 w-full items-center px-3.5 gap-2.5">
@@ -637,7 +636,8 @@ export default function NewsDashboard() {
 	const queryResults = useNewsInternationalFeeds();
 
 	const [searchTerm, setSearchTerm] = useState("");
-	const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
+	const [freshSortBy, setSortBy] = useState<"newest" | "oldest">("newest");
+	const sortBy = useDeferredValue(freshSortBy);
 	const [activeSource, setActiveSource] = useState<
 		"all" | "Google News" | "Yahoo News" | "BBC News"
 	>("all");
@@ -857,7 +857,11 @@ export default function NewsDashboard() {
 								return (
 									<button
 										key={source}
-										onClick={() => setActiveSource(source)}
+										onClick={() => {
+											startTransition(() => {
+												setActiveSource(source);
+											});
+										}}
 										className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-all duration-200 cursor-pointer ${
 											isSelected
 												? "bg-white/[0.08] text-white shadow-sm border-white/[0.04] border"

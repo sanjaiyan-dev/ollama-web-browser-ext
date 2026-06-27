@@ -65,7 +65,7 @@ export const LoadingUI = ({
 
 export const ErrorUI = ({
 	headerDescTxt = "The real-time telemetry pipeline requires runtime binding. Ensure this window resides in a Chrome extension popup configured with permission parameters.",
-	copyTextCommand = "CROSS_ORIGIN=* ollama serve",
+	copyTextCommand = 'OLLAMA_ORIGINS="*" ollama serve',
 	copyTagTxt = "MV3",
 	copyHeaderTxt = "Manifest Interface Schema",
 	copiedButtonTxt = "Copied Configuration",
