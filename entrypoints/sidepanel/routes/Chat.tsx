@@ -1,17 +1,11 @@
-import React, {
+import {
 	useRef,
 	useState,
-	useOptimistic,
 	useActionState,
 	startTransition,
+	useDeferredValue,
 } from "react";
 import { useFormStatus } from "react-dom";
-import {
-	QueryClient,
-	useQueryClient,
-	useMutation,
-	useQuery,
-} from "@tanstack/react-query";
 import { motion, useSpring, AnimatePresence } from "framer-motion";
 import { LegendList } from "@legendapp/list/react";
 import {
@@ -27,63 +21,7 @@ import {
 import { useOllamaSelectedModelRead } from "@/hooks/store";
 import "./styles/Chat.css";
 import { useOllamaChatStream } from "@/hooks/query/agents/useOllamaChat";
-
-export interface ToolDefinition {
-	type: "function";
-	function: {
-		name: string;
-		description: string;
-		parameters: {
-			type: "object";
-			properties: Record<string, any>;
-			required: string[];
-		};
-	};
-}
-
-const basicTools: ToolDefinition[] = [
-	{
-		type: "function",
-		function: {
-			name: "getActiveTabInfo",
-			description: "Gets the title and URL of the active browser tab.",
-			parameters: { type: "object", properties: {}, required: [] },
-		},
-	},
-	{
-		type: "function",
-		function: {
-			name: "get_system_metrics",
-			description: "Queries the browser for the host hardware specs.",
-			parameters: { type: "object", properties: {}, required: [] },
-		},
-	},
-	{
-		type: "function",
-		function: {
-			name: "create_monitoring_alarm",
-			description:
-				"Schedules a background alarm to check a webpage periodically.",
-			parameters: {
-				type: "object",
-				properties: {
-					alarm_name: { type: "string" },
-					url: { type: "string" },
-					interval_minutes: { type: "number" },
-				},
-				required: ["alarm_name", "url", "interval_minutes"],
-			},
-		},
-	},
-];
-
-const experimentalStream_query = ({ queryKey, queryFn }: any) => {
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationKey: queryKey,
-		mutationFn: (vars: any) => queryFn(vars, queryClient),
-	});
-};
+import ReactMarkdown from "react-markdown";
 
 const MagneticButton = ({
 	children,
@@ -139,7 +77,6 @@ const AuroraButton = ({ children, pending }: any) => (
 		disabled={pending}
 		className="w-10 h-10 bg-white/5 border border-white/20 hover:bg-white/10 relative overflow-hidden group cursor-pointer"
 	>
-		{/* Aurora Ambient Core */}
 		<div className="absolute inset-0 bg-linear-to-tr from-[#00E0FF] via-[#8B5CF6] to-[#FF2E63] opacity-0 group-hover:opacity-50 blur-md transition-opacity duration-500" />
 		<div className="relative z-10 text-white">
 			{pending ? (
@@ -165,8 +102,35 @@ const FormSubmitButton = () => {
 	);
 };
 
-const MessageBubble = React.memo(({ message }: { message: any }) => {
+const MessageBubble = ({ message }: { message: any }) => {
+	"use memo";
 	const isAI = message.role === "assistant";
+	const isTool = message.role === "tool";
+
+	// Render structural executed tool cards in deep Liquid Glass
+	if (isTool) {
+		return (
+			<motion.div
+				initial={{ opacity: 0, y: 15, scale: 0.98 }}
+				animate={{ opacity: 1, y: 0, scale: 1 }}
+				className="flex w-full mb-4 justify-start font-sans"
+			>
+				<div className="rounded-2xl bg-[rgba(139,92,246,0.1)] border border-[#8B5CF6]/30 backdrop-blur-xl p-3.5 shadow-[0_8px_32px_rgba(139,92,246,0.05)] w-full max-w-[85%]">
+					<div className="flex items-center gap-2 mb-2">
+						<div className="w-5 h-5 rounded-full bg-[#00E0FF]/10 flex items-center justify-center border border-[#00E0FF]/20">
+							<Wrench size={10} className="text-[#00E0FF] animate-pulse" />
+						</div>
+						<span className="text-[10px] text-[#00E0FF] uppercase tracking-widest font-semibold font-['Plus_Jakarta_Sans',sans-serif]">
+							Executed: {message.toolsUsed}
+						</span>
+					</div>
+					<div className="text-[11px] font-mono text-[#94A3B8] bg-black/40 p-2.5 rounded-xl border border-white/5 break-all max-h-32 overflow-y-auto no-scrollbar">
+						<ReactMarkdown>{message.content}</ReactMarkdown>
+					</div>
+				</div>
+			</motion.div>
+		);
+	}
 
 	return (
 		<motion.div
@@ -192,16 +156,19 @@ const MessageBubble = React.memo(({ message }: { message: any }) => {
 						Synthesizing Space-Time...
 					</motion.div>
 				)}
-				<p className="font-sans text-[14px] leading-[1.6] text-[#F8FAFC]">
-					{message.content}
-				</p>
+
+				{message.content && (
+					<p className="font-sans text-[14px] leading-[1.6] text-[#F8FAFC] whitespace-pre-wrap">
+						<ReactMarkdown>{message.content}</ReactMarkdown>
+					</p>
+				)}
 
 				{isAI && message.toolsUsed && (
 					<div className="mt-3 p-3 rounded-lg bg-black/50 border border-white/10 flex flex-col gap-1 backdrop-blur-md">
 						<span className="text-[10px] text-[#8B5CF6] uppercase tracking-widest font-semibold font-['Plus_Jakarta_Sans',sans-serif]">
-							Tool Invoked
+							Requested Actions
 						</span>
-						<code className="text-[11px] text-[#94A3B8] font-mono">
+						<code className="text-[11px] text-[#94A3B8] font-mono break-all max-h-24 overflow-y-auto block no-scrollbar">
 							{message.toolsUsed}
 						</code>
 					</div>
@@ -209,86 +176,20 @@ const MessageBubble = React.memo(({ message }: { message: any }) => {
 			</div>
 		</motion.div>
 	);
-});
+};
 
 const ChatInterface = () => {
-	const queryClient = useQueryClient();
 	const [isToolMode, setIsToolMode] = useState(false);
 	const [isThinkingEnabled, setIsThinkingEnabled] = useState(true);
 	const formRef = useRef<HTMLFormElement>(null);
 
-	const cachedMessages =
-		useQuery({ queryKey: ["chat-history"], queryFn: () => [] }).data || [];
-
-	const [optimisticMessages, addOptimisticMessage] = useOptimistic(
-		cachedMessages,
-		(state: any[], newMessage: any) => [...state, newMessage],
-	);
-
-	const streamMutation = experimentalStream_query({
-		queryKey: ["chat-stream-mutation"],
-		queryFn: async (vars: any, client: QueryClient) => {
-			const responseId = Date.now().toString();
-			let partialContent = "";
-
-			// Initialize AI placeholder message
-			client.setQueryData(["chat-history"], (old: any) => [
-				...(old || []),
-				{
-					id: responseId,
-					role: "assistant",
-					content: "",
-					thinking: vars.config.thinking,
-				},
-			]);
-
-			const mockWords = vars.isToolMode
-				? [
-						"Initializing",
-						" tool sequence:",
-						" `getActiveTabInfo`...",
-						" Execution complete.",
-						" The",
-						" active",
-						" tab",
-						" is",
-						" React 19 Docs.",
-					]
-				: [
-						"Analyzing",
-						" context.",
-						" My",
-						" thinking",
-						" process",
-						" concludes",
-						" that",
-						" Liquid",
-						" Glass",
-						" is",
-						" beautiful.",
-					];
-
-			// Simulate streaming chunks
-			for (let i = 0; i < mockWords.length; i++) {
-				await new Promise((r) => setTimeout(r, 120));
-				partialContent += mockWords[i];
-
-				client.setQueryData(["chat-history"], (old: any) => {
-					const clone = [...(old || [])];
-					const target = clone.find((m) => m.id === responseId);
-					if (target) {
-						target.content = partialContent;
-						if (vars.isToolMode && partialContent.includes("tool sequence"))
-							target.toolsUsed = "getActiveTabInfo()";
-						if (i === Math.floor(mockWords.length / 2)) target.thinking = false;
-					}
-					return clone;
-				});
-			}
-			return partialContent;
-		},
-	});
-
+	const {
+		messages: freshMessages,
+		sendMessage,
+		isStreaming,
+		activeTool,
+	} = useOllamaChatStream({ isToolMode });
+	const messages = useDeferredValue(freshMessages);
 	const [, submitAction, isPending] = useActionState(
 		(prevState: any, formData: FormData) => {
 			const text = formData.get("message") as string;
@@ -296,34 +197,8 @@ const ChatInterface = () => {
 
 			formRef.current?.reset();
 
-			const newMsg = {
-				id: Date.now().toString(),
-				role: "user",
-				content: text.trim(),
-			};
-			addOptimisticMessage(newMsg);
-
-			queryClient.setQueryData(["chat-history"], (old: any) => [
-				...(old || []),
-				newMsg,
-			]);
-
-			const configPayload = {
-				message: text,
-				mode: isToolMode ? "function_calling" : "chat",
-				...(!isToolMode
-					? { stream: true, thinking: true }
-					: { tools: basicTools }),
-			};
-
-			console.log("🚀 Emitting AI Payload: ", configPayload);
-
 			startTransition(async () => {
-				await streamMutation.mutateAsync({
-					message: text,
-					isToolMode,
-					config: configPayload,
-				});
+				await sendMessage(text.trim());
 			});
 
 			return null;
@@ -339,7 +214,7 @@ const ChatInterface = () => {
 			<div className="absolute bottom-[-10%] right-[-20%] w-75 h-75 bg-[#8B5CF6] blur-[100px] opacity-20 aurora-2 rounded-full pointer-events-none" />
 			<div className="absolute top-[30%] left-[20%] w-62.5 h-62.5 bg-[#FF2E63] blur-[120px] opacity-[0.15] aurora-3 rounded-full pointer-events-none" />
 
-			{/* Main Canvas Container */}
+			{/* Main Container */}
 			<div className="flex flex-col w-full h-full p-4 relative z-10">
 				{/* Header - Glass Panel */}
 				<div className="flex items-center justify-between p-3 rounded-2xl bg-[rgba(20,20,25,0.4)] backdrop-blur-lg border border-[rgba(255,255,255,0.08)] mb-4 shadow-[0_8px_32px_rgba(139,92,246,0.05)] bg-transparent">
@@ -350,22 +225,22 @@ const ChatInterface = () => {
 							</div>
 						</div>
 						<div>
-							<h1 className="font-['Plus_Jakarta_Sans',sans-serif] text-[15px] font-bold text-[#F8FAFC] tracking-[-0.02em] leading-tight">
+							<h1 className="font-['Plus_Jakarta_Sans',sans-serif] text-[14px] font-bold text-[#F8FAFC] tracking-[-0.02em] leading-tight">
 								Ollama Native
 							</h1>
-							<p className="font-['Plus_Jakarta_Sans',sans-serif] text-[10px] text-[#00E0FF] tracking-widest uppercase font-semibold">
+							<p className="font-['Plus_Jakarta_Sans',sans-serif] text-[9px] text-[#00E0FF] tracking-widest uppercase font-semibold">
 								{currenLLMModel}
 							</p>
 						</div>
 					</div>
 
-					{/* Mode Switch (Just Chat vs Function Calling) */}
+					{/* Protocol Config Mode Switch */}
 					<div className="flex items-center gap-2 relative group">
 						<div className="text-[#64748B] hover:text-[#00E0FF] transition-colors cursor-help p-1 rounded-full hover:bg-white/5">
 							<Info size={14} />
 						</div>
 
-						{/* Liquid Glass Popover */}
+						{/* Hover Context Glass Panel */}
 						<div className="absolute right-0 top-[120%] w-55 p-3 rounded-2xl bg-[rgba(15,15,20,0.85)] backdrop-blur-xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.5),0_0_20px_rgba(0,224,255,0.1)] opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-300 ease-out z-50 pointer-events-none">
 							<div className="flex items-center gap-1.5 text-[#F8FAFC] font-['Plus_Jakarta_Sans',sans-serif] font-bold text-[12px] mb-1">
 								<Sparkles size={12} className="text-[#ffe100]" /> Protocol Mode
@@ -382,6 +257,7 @@ const ChatInterface = () => {
 								for direct function calling.
 							</p>
 						</div>
+
 						<div
 							onClick={() => {
 								setIsToolMode((prevMode) => !prevMode);
@@ -417,56 +293,78 @@ const ChatInterface = () => {
 
 				<div className="flex-1 min-h-0 w-full relative overflow-hidden">
 					<AnimatePresence mode="wait">
-						{optimisticMessages.length === 0 ? (
+						{messages.length === 0 ? (
 							<div className="flex items-center justify-center h-full flex-col text-center opacity-50 font-['Plus_Jakarta_Sans',sans-serif]">
-								<Bot size={48} className="text-[#8B5CF6] mb-4" />
+								<Bot size={48} className="text-[#8B5CF6] mb-3" />
 								<p className="text-sm">Initiate intelligence matrix.</p>
 							</div>
 						) : (
 							<LegendList
-								data={optimisticMessages}
+								data={messages}
 								renderItem={({ item }) => <MessageBubble message={item} />}
 								keyExtractor={(item: any) => item.id}
 								maintainScrollAtEnd
 								recycleItems
 								className="h-full overflow-y-auto no-scrollbar"
 								style={{ scrollbarWidth: "none" }}
-								ListFooterComponent={<div className="h-22.5 w-full" />}
+								ListFooterComponent={<div className="h-20 w-full" />}
 							/>
+						)}
+					</AnimatePresence>
+
+					{/* Tool Running Ambient Card Overlay */}
+					<AnimatePresence>
+						{activeTool && (
+							<motion.div
+								initial={{ opacity: 0, y: 10 }}
+								animate={{ opacity: 1, y: 0 }}
+								exit={{ opacity: 0, y: 10 }}
+								className="absolute bottom-24 left-4 right-4 z-20 flex items-center justify-center pointer-events-none"
+							>
+								<div className="rounded-full bg-[rgba(20,20,25,0.8)] border border-[#00E0FF]/30 backdrop-blur-2xl px-4 py-2 shadow-[0_8px_32px_rgba(0,224,255,0.15)] flex items-center gap-3">
+									<Loader2 size={12} className="text-[#00E0FF] animate-spin" />
+									<span className="text-[11px] text-[#F8FAFC] font-medium font-sans">
+										Executing local action:{" "}
+										<span className="text-[#00E0FF] font-mono">
+											{activeTool}
+										</span>
+									</span>
+								</div>
+							</motion.div>
 						)}
 					</AnimatePresence>
 				</div>
 
+				{/* Floating Bottom Navigation Menu Context */}
 				<div
-					className={`fixed bottom-7 shrink-0 h-15 left-4 right-4 bg-[rgba(20,20,25,0.45)] backdrop-blur-xl saturate-150 border border-[rgba(255,255,255,0.2)] rounded-full p-2 shadow-[0_8px_32px_rgba(139,92,246,0.15)] transition-all [&:hover,&:focus]:inset-shadow-sm ${isPending ? "hover:shadow-fuchsia-300" : "hover:shadow-sky-300"}`}
+					className={`fixed bottom-5 shrink-0 h-14 left-4 right-4 bg-[rgba(20,20,25,0.45)] backdrop-blur-xl saturate-150 border border-[rgba(255,255,255,0.2)] rounded-full p-1.5 shadow-[0_8px_32px_rgba(139,92,246,0.15)] transition-all [&:hover,&:focus]:inset-shadow-sm ${isStreaming || isPending ? "hover:shadow-fuchsia-300" : "hover:shadow-sky-300"}`}
 				>
 					<form
 						ref={formRef}
 						action={submitAction}
-						className="flex items-center w-full gap-2 relative z-10 "
+						className="flex items-center w-full gap-2 relative z-10"
 					>
 						<div className="relative group flex items-center justify-center">
-							{/* Tooltip (Controlled natively via Tailwind hover/transitions) */}
-							<div className="absolute bottom-[135%] left-0 w-56 p-3 rounded-2xl bg-[rgba(15,15,20,0.92)] backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.6),0_0_15px_rgba(139,92,246,0.1)] opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-50">
-								<div className="flex items-center gap-1.5 text-[#F8FAFC] font-['Plus_Jakarta_Sans',sans-serif] font-bold text-[12px] mb-1">
+							{/* Switch details tooltip */}
+							<div className="absolute bottom-[135%] left-0 w-52 p-3 rounded-2xl bg-[rgba(15,15,20,0.92)] backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.6)] opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-999999">
+								<div className="flex items-center gap-1.5 text-[#F8FAFC] font-['Plus_Jakarta_Sans',sans-serif] font-bold text-[11px] mb-1">
 									<Brain size={12} className="text-[#00E0FF]" /> Deep Thinking
 								</div>
-								<p className="text-[#94A3B8] text-[10.5px] leading-normal font-sans">
-									Activate reasoning-trace generation.{" "}
+								<p className="text-[#94A3B8] text-[10px] leading-normal font-sans">
+									Activate reasoning configurations.{" "}
 									<span className="text-[#8B5CF6] font-semibold">Note:</span>{" "}
-									Tool-calls bypass manual overrides and are enabled by default.
+									Tool actions default to bypassing manual reasoning overrides.
 								</p>
 							</div>
 
-							{/* Neon Ambient Halo behind switch */}
 							<div
 								className={`absolute inset-0 rounded-full blur-md transition-opacity duration-300 pointer-events-none ${isThinkingEnabled ? "bg-[#00E0FF]/25 opacity-100" : "bg-transparent opacity-0"}`}
 							/>
 
-							{/* Toggle Switch */}
+							{/* Thinking state button toggle */}
 							<button
 								type="button"
-								disabled={isToolMode}
+								disabled={isToolMode || isStreaming || isPending}
 								onClick={() => {
 									if (isToolMode) {
 										setIsThinkingEnabled(true);
@@ -474,7 +372,7 @@ const ChatInterface = () => {
 										setIsThinkingEnabled((prevThinkMode) => !prevThinkMode);
 									}
 								}}
-								className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-300 cursor-pointer relative z-10 ${
+								className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 cursor-pointer relative z-10 ${
 									isThinkingEnabled
 										? "bg-[rgba(0,224,255,0.1)] border-[#00E0FF]/40 text-[#00E0FF] shadow-[0_0_15px_rgba(0,224,255,0.2)]"
 										: "bg-white/5 border-white/10 text-[#64748B] hover:text-[#94A3B8] hover:bg-white/10"
@@ -491,14 +389,12 @@ const ChatInterface = () => {
 							type="text"
 							name="message"
 							placeholder={
-								isToolMode
-									? "Instruct system logic..."
-									: "Ask Ollama locally..."
+								isToolMode ? "Instruct system logic..." : "Ask Ollama..."
 							}
-							className="flex-1 bg-transparent border-none outline-none text-[#F8FAFC] placeholder:text-[#64748B] text-[14px] px-2 min-w-0 font-mono placeholder:font-mono"
+							className="flex-1 bg-transparent border-none outline-none text-[#F8FAFC] placeholder:text-[#64748B] text-[14px] px-2 min-w-0 font-mono"
 							autoComplete="off"
 							required
-							disabled={isPending}
+							disabled={isStreaming || isPending}
 						/>
 
 						<FormSubmitButton />

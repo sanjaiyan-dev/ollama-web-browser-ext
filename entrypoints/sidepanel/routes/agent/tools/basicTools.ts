@@ -57,7 +57,7 @@ export async function browser_navigate(
 
 /**
  * 4. Click Interactive Element
- * Executes a targeted click action inside the page context.
+ * Walk the DOM to prevent XPath string parsing errors and dispatch custom bubbling MouseEvents.
  */
 export async function click_interactive_element(
 	args: ToolArguments["click_interactive_element"],
@@ -74,29 +74,71 @@ export async function click_interactive_element(
 			func: (text, selector) => {
 				let element: HTMLElement | null = null;
 
-				// 1. Text Search fallback (checks visible button or link text)
 				if (text) {
-					const xpath = `//*[not(self::script) and not(self::style) and (contains(text(), "${text}") or contains(@value, "${text}"))]`;
-					const evalResult = document.evaluate(
-						xpath,
-						document,
-						null,
-						XPathResult.FIRST_ORDERED_NODE_TYPE,
-						null,
+					const sanitizedText = text.trim().toLowerCase();
+					const walker = document.createTreeWalker(
+						document.body,
+						NodeFilter.SHOW_ELEMENT,
+						{
+							acceptNode: (node: Node) => {
+								const el = node as HTMLElement;
+								const tag = el.tagName.toLowerCase();
+								if (["script", "style", "noscript"].includes(tag)) {
+									return NodeFilter.FILTER_REJECT;
+								}
+								const valueAttr = el.getAttribute("value") || "";
+								const placeholderAttr = el.getAttribute("placeholder") || "";
+								const ariaLabel = el.getAttribute("aria-label") || "";
+								const elementText = (el.innerText || "").toLowerCase();
+
+								if (
+									elementText.includes(sanitizedText) ||
+									valueAttr.toLowerCase().includes(sanitizedText) ||
+									placeholderAttr.toLowerCase().includes(sanitizedText) ||
+									ariaLabel.toLowerCase().includes(sanitizedText)
+								) {
+									return NodeFilter.FILTER_ACCEPT;
+								}
+								return NodeFilter.FILTER_SKIP;
+							},
+						},
 					);
-					element = evalResult.singleNodeValue as HTMLElement;
+
+					let currentNode = walker.nextNode();
+
+					while (currentNode) {
+						element = currentNode as HTMLElement;
+						currentNode = walker.nextNode();
+					}
 				}
 
-				// 2. CSS Selector fallback
+				// Fallback Selector match
 				if (!element && selector) {
 					element = document.querySelector(selector);
 				}
 
 				if (element) {
-					element.click();
+					// Simulate robust programmatic mouse interactions
+					const mousedown = new MouseEvent("mousedown", {
+						bubbles: true,
+						cancelable: true,
+					});
+					const mouseup = new MouseEvent("mouseup", {
+						bubbles: true,
+						cancelable: true,
+					});
+					const click = new MouseEvent("click", {
+						bubbles: true,
+						cancelable: true,
+					});
+
+					element.dispatchEvent(mousedown);
+					element.dispatchEvent(mouseup);
+					element.dispatchEvent(click);
+
 					return {
 						success: true,
-						message: `Successfully clicked target element.`,
+						message: `Dispatched full click event flow to targeted target element.`,
 					};
 				}
 
@@ -146,7 +188,7 @@ export async function web_search(
 
 		const results: Array<{ title: string; url: string; snippet: string }> = [];
 		const resultRegExp =
-			/<a class="result__a" href="([^"]+)">([^<]+)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+			/<a\s+class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a\s+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
 		let match;
 		let count = 0;
 

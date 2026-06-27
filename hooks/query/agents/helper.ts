@@ -1,11 +1,11 @@
 import { toolsSchema } from "@/entrypoints/sidepanel/routes/agent/functions";
-import { experimental_streamedQuery } from "@tanstack/react-query";
 
 export async function* fetchOllamaStream(
-	messages: { role: string; content: string }[],
+	messages: { role: string; content: string; tool_calls?: any }[],
 	model: string,
 	isToolMode: boolean,
-	signal: AbortSignal,
+	functionCall: typeof toolsSchema,
+	onToolCalls?: (toolCalls: any[]) => void, // Tactical: Capture tool invocations on-the-fly
 ): AsyncIterable<string> {
 	"use memo";
 	const payload = {
@@ -13,6 +13,8 @@ export async function* fetchOllamaStream(
 		messages,
 		stream: true,
 		...(isToolMode ? { tools: toolsSchema, think: true } : { think: true }),
+		// Prevent strict parameter overwrites by merging the custom tools array if supplied
+		...(functionCall && functionCall.length > 0 ? { tools: functionCall } : {}),
 	};
 
 	const response = await fetch("http://localhost:11434/api/chat", {
@@ -21,7 +23,6 @@ export async function* fetchOllamaStream(
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify(payload),
-		signal,
 	});
 
 	if (!response.ok) {
@@ -47,6 +48,17 @@ export async function* fetchOllamaStream(
 				if (!line.trim()) continue;
 				try {
 					const parsed = JSON.parse(line);
+
+					// Intercept and bubble up requested tool calls
+					if (
+						parsed.message?.tool_calls &&
+						parsed.message.tool_calls.length > 0
+					) {
+						if (onToolCalls) {
+							onToolCalls(parsed.message.tool_calls);
+						}
+					}
+
 					const content = parsed.message?.content || "";
 					if (content) {
 						yield content;
