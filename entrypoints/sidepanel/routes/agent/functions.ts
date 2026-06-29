@@ -238,7 +238,59 @@ const basicTools = [
 			},
 		},
 	},
-] as const;
+	{
+		type: "function",
+		function: {
+			name: "get_user_profile",
+			description:
+				"Retrieves the stored autofill details of the user (e.g., name, email, phone, city, address) to know what data to use when filling out forms. Accepts no parameters.",
+			parameters: {
+				type: "object",
+				properties: {},
+				required: [],
+			},
+		},
+	},
+	{
+		type: "function",
+		function: {
+			name: "fill_form_fields",
+			description:
+				"Fills multiple input fields, textareas, or dropdowns on the active webpage with specified values simultaneously.",
+			parameters: {
+				type: "object",
+				properties: {
+					fields: {
+						type: "array",
+						description: "An array of fields to fill.",
+						items: {
+							type: "object",
+							properties: {
+								selector: {
+									type: "string",
+									description:
+										"Optional CSS selector for the target input element (e.g., '#email', 'input[name=\"first_name\"]').",
+								},
+								label: {
+									type: "string",
+									description:
+										"Optional visual label, name attribute, placeholder, or aria-label to locate the input.",
+								},
+								value: {
+									type: "string",
+									description:
+										"The text or option value to fill into the targeted element.",
+								},
+							},
+							required: ["value"],
+						},
+					},
+				},
+				required: ["fields"],
+			},
+		},
+	},
+] as const; // This closes the basicTools array
 
 const googleTools = [] satisfies ToolDefinition[];
 

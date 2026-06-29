@@ -20,6 +20,9 @@ export type ToolArguments = {
 		interval_minutes: number;
 		selector: string;
 	};
+	fill_form_fields: {
+		fields: Array<{ selector?: string; label?: string; value: string }>;
+	};
 };
 
 /**
@@ -70,7 +73,7 @@ export async function click_interactive_element(
 	try {
 		const [{ result }] = await browser.scripting.executeScript({
 			target: { tabId: tab.id },
-			args: [args.text, args.selector],
+			args: [args.text ?? null, args.selector ?? null],
 			func: (text, selector) => {
 				let element: HTMLElement | null = null;
 
@@ -378,4 +381,129 @@ export async function create_monitoring_alarm(
 	});
 
 	return { success: true };
+}
+/**
+ * 12. Get Stored User Autofill Profile
+ */
+export async function get_user_profile(): Promise<{
+	success: boolean;
+	profile?: any;
+	error?: string;
+}> {
+	try {
+		const result = await browser.storage.sync.get(
+			"agent_user_autofill_profile",
+		);
+		const profile = result["agent_user_autofill_profile"];
+		return { success: true, profile: profile || null };
+	} catch (err: any) {
+		return { success: false, error: err?.message || String(err) };
+	}
+}
+
+/**
+ * 13. Fill Form Fields
+ * Dynamically queries active DOM inputs and applies simulated input events
+ * to bypass modern reactive framework state-locks.
+ */
+export async function fill_form_fields(
+	args: ToolArguments["fill_form_fields"],
+): Promise<{ success: boolean; message: string }> {
+	const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+	if (!tab || !tab.id) {
+		return { success: false, message: "No active tab found." };
+	}
+
+	// Safeguard: replace undefined properties with null to protect clone serialization
+	const sanitizedFields = args.fields.map((field) => ({
+		selector: field.selector ?? null,
+		label: field.label ?? null,
+		value: field.value ?? "",
+	}));
+
+	try {
+		const [{ result }] = await browser.scripting.executeScript({
+			target: { tabId: tab.id },
+			args: [sanitizedFields],
+			func: (fields) => {
+				let filledCount = 0;
+				const failures: string[] = [];
+
+				for (const field of fields) {
+					let element:
+						| HTMLInputElement
+						| HTMLTextAreaElement
+						| HTMLSelectElement
+						| null = null;
+
+					if (field.selector) {
+						element = document.querySelector(field.selector);
+					}
+
+					if (!element && field.label) {
+						const queryText = field.label.trim().toLowerCase();
+
+						const labels = Array.from(document.querySelectorAll("label"));
+						for (const label of labels) {
+							if (label.innerText.toLowerCase().includes(queryText)) {
+								if (label.htmlFor) {
+									element = document.getElementById(label.htmlFor) as any;
+								} else {
+									element = label.querySelector("input, textarea, select");
+								}
+								if (element) break;
+							}
+						}
+
+						if (!element) {
+							const inputs = Array.from(
+								document.querySelectorAll("input, textarea, select"),
+							) as Array<
+								HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+							>;
+							for (const input of inputs) {
+								const placeholder = input.getAttribute("placeholder") || "";
+								const name = input.getAttribute("name") || "";
+								const ariaLabel = input.getAttribute("aria-label") || "";
+
+								if (
+									placeholder.toLowerCase().includes(queryText) ||
+									name.toLowerCase().includes(queryText) ||
+									ariaLabel.toLowerCase().includes(queryText)
+								) {
+									element = input;
+									break;
+								}
+							}
+						}
+					}
+
+					if (element) {
+						element.value = field.value;
+						element.dispatchEvent(new Event("input", { bubbles: true }));
+						element.dispatchEvent(new Event("change", { bubbles: true }));
+						filledCount++;
+					} else {
+						failures.push(
+							field.label || field.selector || "unidentified field",
+						);
+					}
+				}
+
+				return {
+					success: filledCount > 0,
+					message: `Successfully filled ${filledCount}/${fields.length} fields.${
+						failures.length > 0 ? " Missing: " + failures.join(", ") : ""
+					}`,
+				};
+			},
+		});
+
+		return result as { success: boolean; message: string };
+	} catch (error: any) {
+		return {
+			success: false,
+			message: `Script injection failed: ${error?.message || error}`,
+		};
+	}
 }

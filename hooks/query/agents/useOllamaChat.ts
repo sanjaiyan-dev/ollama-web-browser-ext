@@ -23,12 +23,12 @@ interface OllamaApiMessage {
 
 type BrowserToolFn = (...args: any[]) => Promise<any>;
 
-function generateTimestampId(): string {
-	return Date.now().toString();
+function generateTimestampId(prefix = "msg"): string {
+	return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}-${crypto?.randomUUID?.()}`;
 }
 
 function generateToolResponseId(toolName: string): string {
-	return `tool-${Date.now()}-${Math.random()}-${toolName}`;
+	return `tool-${Date.now()}-${Math.random().toString(36).substring(2, 9)}-${toolName}-${crypto?.randomUUID?.()}`;
 }
 
 /**
@@ -46,6 +46,8 @@ const TOOL_REGISTRY: Record<string, BrowserToolFn> = {
 	organize_tabs: browserTools.organize_tabs,
 	get_system_metrics: browserTools.get_system_metrics,
 	create_monitoring_alarm: browserTools.create_monitoring_alarm,
+	get_user_profile: browserTools.get_user_profile,
+	fill_form_fields: browserTools.fill_form_fields,
 };
 
 /**
