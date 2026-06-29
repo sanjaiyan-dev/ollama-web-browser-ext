@@ -4,6 +4,8 @@ import {
 	useActionState,
 	startTransition,
 	useDeferredValue,
+	type ReactNode,
+	type MouseEventHandler,
 } from "react";
 import { useFormStatus } from "react-dom";
 import { motion, useSpring, AnimatePresence } from "framer-motion";
@@ -17,19 +19,28 @@ import {
 	Info,
 	Brain,
 	BrainCircuit,
+	Globe,
 } from "lucide-react";
 import { useOllamaSelectedModelRead } from "@/hooks/store";
 import "./styles/Chat.css";
 import { useOllamaChatStream } from "@/hooks/query/agents/useOllamaChat";
 import ReactMarkdown from "react-markdown";
+import { useBrowserCurrentActiveTab } from "@/hooks/query/useBrowserActiveTab";
 
+interface ChatMagneticBtnProps {
+	children: ReactNode;
+	onClick?: MouseEventHandler<HTMLButtonElement>;
+	type?: "button" | "submit" | "reset";
+	className: string;
+	disabled: boolean;
+}
 const MagneticButton = ({
 	children,
 	onClick,
 	type = "button",
 	className = "",
 	disabled = false,
-}: any) => {
+}: ChatMagneticBtnProps) => {
 	const ref = useRef<HTMLButtonElement>(null);
 
 	const xSpring = useSpring(0, { stiffness: 180, damping: 12, mass: 0.5 });
@@ -96,7 +107,10 @@ const AuroraButton = ({ children, pending }: any) => (
 const FormSubmitButton = () => {
 	const { pending } = useFormStatus();
 	return (
-		<AuroraButton pending={pending}>
+		<AuroraButton
+			pending={pending}
+			className={pending ? "cursor-wait" : "cursor-pointer"}
+		>
 			<Send size={16} className="ml-0.5" />
 		</AuroraButton>
 	);
@@ -182,6 +196,8 @@ const ChatInterface = () => {
 	const [isToolMode, setIsToolMode] = useState(false);
 	const [isThinkingEnabled, setIsThinkingEnabled] = useState(true);
 	const formRef = useRef<HTMLFormElement>(null);
+	const [isPageContextEnabled, setIsPageContextEnabled] = useState(true);
+	const { data: currentPageContext } = useBrowserCurrentActiveTab();
 
 	const {
 		messages: freshMessages,
@@ -301,7 +317,10 @@ const ChatInterface = () => {
 						) : (
 							<LegendList
 								data={messages}
-								renderItem={({ item }) => <MessageBubble message={item} />}
+								renderItem={({ item }) => {
+									console.log(item);
+									return <MessageBubble message={item} />;
+								}}
 								keyExtractor={(item: any) => item.id}
 								maintainScrollAtEnd
 								recycleItems
@@ -345,7 +364,48 @@ const ChatInterface = () => {
 						className="flex items-center w-full gap-2 relative z-10"
 					>
 						<div className="relative group flex items-center justify-center">
-							{/* Switch details tooltip */}
+							<div className="absolute bottom-[135%] left-0 w-52 p-3 rounded-2xl bg-[rgba(15,15,20,0.92)] backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.6)] opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-999999">
+								<div className="flex items-center gap-1.5 text-[#F8FAFC] font-['Plus_Jakarta_Sans',sans-serif] font-bold text-[11px] mb-1">
+									<Globe size={12} className="text-[#8B5CF6]" /> Webpage Context
+								</div>
+								<p className="text-[#94A3B8] text-[10px] leading-normal font-sans">
+									{currentPageContext ? (
+										<>
+											Inject the text content of:{" "}
+											<span className="text-[#00E0FF] font-medium break-all block mt-1">
+												{currentPageContext?.title || "Current Page"}
+											</span>
+										</>
+									) : (
+										"Attach the content of the active browser page as background instructions."
+									)}
+								</p>
+							</div>
+
+							<div
+								className={`absolute inset-0 rounded-full blur-md transition-opacity duration-300 pointer-events-none ${isPageContextEnabled ? "bg-[#8B5CF6]/25 opacity-100" : "bg-transparent opacity-0"}`}
+							/>
+
+							{/* Page context toggle button */}
+							<button
+								type="button"
+								disabled={isStreaming || isPending}
+								onClick={() => setIsPageContextEnabled((prev) => !prev)}
+								className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 cursor-pointer relative z-10 ${
+									isPageContextEnabled
+										? "bg-[rgba(139,92,246,0.1)] border-[#8B5CF6]/40 text-[#8B5CF6] shadow-[0_0_15px_rgba(139,92,246,0.2)]"
+										: "bg-white/5 border-white/10 text-[#64748B] hover:text-[#94A3B8] hover:bg-white/10"
+								}`}
+							>
+								<Globe
+									size={18}
+									className={`transition-transform duration-500 ${isPageContextEnabled ? "scale-110 rotate-12" : "scale-100"}`}
+								/>
+							</button>
+						</div>
+
+						{/* Existing Deep Thinking container */}
+						<div className="relative group flex items-center justify-center">
 							<div className="absolute bottom-[135%] left-0 w-52 p-3 rounded-2xl bg-[rgba(15,15,20,0.92)] backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.6)] opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-999999">
 								<div className="flex items-center gap-1.5 text-[#F8FAFC] font-['Plus_Jakarta_Sans',sans-serif] font-bold text-[11px] mb-1">
 									<Brain size={12} className="text-[#00E0FF]" /> Deep Thinking

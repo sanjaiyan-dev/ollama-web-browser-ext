@@ -8,7 +8,7 @@ export const LoadingUI = ({
 	return (
 		<div className="relative min-h-screen w-full  bg-[#05050A] border border-white/10 rounded-sm overflow-hidden p-6 text-[#F8FAFC] flex flex-col justify-between">
 			{/* Dynamic Mesh Layer */}
-			<div className="absolute top-[20%] right-[-10%] w-45 h-45 rounded-full bg-[#00E0FF] opacity-10 blur-[64px] pointer-events-none animate-pulse" />
+			<div className="absolute top-[20%] right-[-10%] w-45 h-45 rounded-full bg-[#00E0FF] opacity-10 blur-3xl pointer-events-none animate-pulse" />
 
 			<div className="space-y-8 mt-12">
 				{/* Holographic CPU Silicon Base */}
@@ -16,7 +16,7 @@ export const LoadingUI = ({
 					{/* Pulsing Concentric Outer Rings */}
 					<div className="absolute inset-0 border border-dashed border-[#00E0FF]/30 rounded-full animate-spin [animation-duration:15s]" />
 					<div className="absolute inset-2 border border-[#8B5CF6]/40 rounded-full animate-ping [animation-duration:3s]" />
-					<div className="absolute inset-4 bg-gradient-to-tr from-[#00E0FF]/10 to-[#8B5CF6]/10 rounded-full backdrop-blur-md border border-white/10 flex items-center justify-center">
+					<div className="absolute inset-4 bg-linear-to-tr from-[#00E0FF]/10 to-[#8B5CF6]/10 rounded-full backdrop-blur-md border border-white/10 flex items-center justify-center">
 						<svg
 							className="w-10 h-10 text-[#00E0FF] animate-pulse"
 							fill="none"
@@ -47,7 +47,7 @@ export const LoadingUI = ({
 					{[...Array(4)].map((_, i) => (
 						<div
 							key={i}
-							className="h-10 bg-white/[0.02] border border-white/[0.04] rounded-xl animate-pulse"
+							className="h-10 bg-white/2 border border-white/4 rounded-xl animate-pulse cursor-wait"
 							style={{ animationDelay: `${i * 150}ms` }}
 						/>
 					))}
@@ -127,7 +127,7 @@ export const ErrorUI = ({
 					<motion.button
 						whileTap={{ scale: 0.95 }}
 						onClick={handleCopyManifest}
-						className="w-full py-2 bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-xs font-mono font-medium rounded-xl flex items-center justify-center space-x-2 text-white transition-all duration-300 shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
+						className="w-full py-2 bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-xs font-mono font-medium rounded-xl flex items-center justify-center space-x-2 text-white transition-all duration-300 shadow-[0_4px_12px_rgba(0,0,0,0.2)] cursor-copy"
 					>
 						<svg
 							className="w-3.5 h-3.5"

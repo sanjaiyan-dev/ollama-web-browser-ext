@@ -23,6 +23,17 @@ export interface OllamaModel {
 	};
 	capabilities: string[];
 }
+const formatSize = (bytes: number) => {
+	return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+};
+const formatDate = (isoString: string) => {
+	const date = new Date(isoString);
+	return date.toLocaleDateString("en-GB", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+	});
+};
 
 export default function OllamaSidePanel() {
 	const { data, isLoading, isError } = useOllamaListModels();
@@ -40,20 +51,6 @@ export default function OllamaSidePanel() {
 		setActiveModel(modelName);
 		startTransition(() => {
 			setSelectedModel(modelName);
-		});
-	};
-	// Helper: Format bytes to Gigabytes
-	const formatSize = (bytes: number) => {
-		return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-	};
-
-	// Helper: Format ISO date to a friendly string
-	const formatDate = (isoString: string) => {
-		const date = new Date(isoString);
-		return date.toLocaleDateString("en-GB", {
-			month: "short",
-			day: "numeric",
-			year: "numeric",
 		});
 	};
 
@@ -129,7 +126,7 @@ export default function OllamaSidePanel() {
 			<div className="flex-1 overflow-y-auto px-3 pb-4 space-y-3 scrollbar-thin scrollbar-thumb-zinc-800">
 				{filteredModels.length === 0 ? (
 					<div className="text-center py-8 text-zinc-500 text-xs">
-						No matching models found named {deferredSearchTerm}.
+						No matching models named '{deferredSearchTerm}' were found.
 					</div>
 				) : (
 					filteredModels.map((result, idx) => {
@@ -157,7 +154,7 @@ export default function OllamaSidePanel() {
 											{model.name}
 										</span>
 										<span className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">
-											{model.details.family} • {model.details.parameter_size}
+											{model.details?.family} • {model.details?.parameter_size}
 										</span>
 									</div>
 
@@ -167,7 +164,7 @@ export default function OllamaSidePanel() {
 											handleCopy(model.name, idx);
 											selectActiveModel(model.name);
 										}}
-										className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+										className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-copy"
 										title="Copy model name"
 										type="button"
 									>
@@ -218,14 +215,14 @@ export default function OllamaSidePanel() {
 											Quantization
 										</span>
 										<span className="font-mono text-zinc-300">
-											{model.details.quantization_level}
+											{model.details?.quantization_level}
 										</span>
 									</div>
 								</div>
 
 								{/* Capabilities Badges */}
 								<div className="mt-3 flex flex-wrap gap-1.5 pl-1">
-									{model.capabilities.map((cap) => {
+									{model.capabilities?.map?.((cap) => {
 										let capClass =
 											"bg-zinc-800/50 text-zinc-400 border-zinc-800";
 										if (cap === "thinking") {
@@ -251,7 +248,7 @@ export default function OllamaSidePanel() {
 
 								{/* Footer metadata */}
 								<div className="mt-3 text-[9px] text-zinc-600 text-right pl-1">
-									Modified: {formatDate(model.modified_at)}
+									Modified: {formatDate(model?.modified_at)}
 								</div>
 							</div>
 						);

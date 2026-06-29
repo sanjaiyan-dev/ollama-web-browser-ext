@@ -14,7 +14,7 @@ export const useOllamaEndPointState = () => {
 
 export const ollamaSelectedModelAtom = atomWxtStorage<string | null>(
 	"local:ollamaSelectedModelAtom",
-	null,
+	"gemma:latest",
 );
 export const useOllamaSelectedModelState = () => {
 	return useAtom(ollamaSelectedModelAtom);

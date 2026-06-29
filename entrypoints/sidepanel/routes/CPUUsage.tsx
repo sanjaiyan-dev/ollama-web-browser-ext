@@ -65,7 +65,8 @@ export const MagneticNode: React.FC<{
 	active?: boolean;
 }> = ({ children, className = "", onClick, active = false }) => {
 	const ref = useRef<HTMLButtonElement>(null);
-	const [coords, setCoords] = useState({ x: 0, y: 0 });
+	const [freshCoords, setCoords] = useState({ x: 0, y: 0 });
+	const coords = useDeferredValue(freshCoords);
 
 	// Spring physics parameters set precisely to specifications:
 	// Stiffness: 180 | Damping: 12 | Translation ratio: 35% (0.35)
@@ -77,9 +78,11 @@ export const MagneticNode: React.FC<{
 		const rect = ref.current.getBoundingClientRect();
 		const centerX = rect.left + rect.width / 2;
 		const centerY = rect.top + rect.height / 2;
-		setCoords({
-			x: e.clientX - centerX,
-			y: e.clientY - centerY,
+		startTransition(() => {
+			setCoords({
+				x: e.clientX - centerX,
+				y: e.clientY - centerY,
+			});
 		});
 	};
 
@@ -101,7 +104,7 @@ export const MagneticNode: React.FC<{
 			<motion.div
 				animate={{ x: springX, y: springY }}
 				transition={{ type: "spring", stiffness: 180, damping: 12 }}
-				whileTap={{ scale: 0.92 }} // Elastic structural micro-compression
+				whileTap={{ scale: 0.92 }}
 				className="w-full h-full flex items-center justify-center p-2.5"
 			>
 				{children}
@@ -119,7 +122,8 @@ export const InteractiveGlassCard: React.FC<{
 	className?: string;
 }> = ({ children, className = "" }) => {
 	const cardRef = useRef<HTMLDivElement>(null);
-	const [coords, setCoords] = useState({ x: 0, y: 0 });
+	const [freshCoords, setCoords] = useState({ x: 0, y: 0 });
+	const coords = useDeferredValue(freshCoords);
 	const [isHovered, setIsHovered] = useState(false);
 
 	const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -503,7 +507,7 @@ export default function TelemetryDashboard() {
 											<div className="text-xs font-mono font-bold text-white">
 												{Math.round(coreDeltas[selectedCore].userUsage)}%
 											</div>
-											<div className="h-1 bg-white/[0.04] rounded-full overflow-hidden">
+											<div className="h-1 bg-white/4 rounded-full overflow-hidden">
 												<div
 													className="h-full bg-[#00E0FF] rounded-full"
 													style={{
@@ -597,7 +601,7 @@ export default function TelemetryDashboard() {
 
 									{/* Interactive definition display */}
 									{selectedFlag && (
-										<div className="p-3 bg-white/[0.02] border border-white/[0.08] rounded-xl text-[10px] text-slate-300 leading-relaxed font-mono">
+										<div className="p-3 bg-white/2 border border-white/8 rounded-xl text-[10px] text-slate-300 leading-relaxed font-mono">
 											<span className="text-[#00E0FF] font-bold">
 												{selectedFlag.toUpperCase()}:{" "}
 											</span>

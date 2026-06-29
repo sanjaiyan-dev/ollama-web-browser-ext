@@ -1,11 +1,9 @@
 import { experimental_streamedQuery, useQuery } from "@tanstack/react-query";
-import {
-	OLLAMA_BROWSER_EXT_REACTQUERY_KEY,
-	useBrowserCurrentActiveTab,
-} from "../query";
+import { useBrowserCurrentActiveTab } from "../query/useBrowserActiveTab";
 import { useOllamaSelectedModelRead, useOllamaEndPointRead } from "../store";
 import { useDeferredValue } from "react";
 import { useActiveTab } from "../utils";
+import { OLLAMA_BROWSER_EXT_REACTQUERY_KEY } from ".";
 
 interface StreamFuncParams {
 	ollamaEndpoint: string;

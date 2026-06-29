@@ -1,7 +1,7 @@
 "use memo";
 
 import { useQuery } from "@tanstack/react-query";
-import { OLLAMA_BROWSER_EXT_REACTQUERY_KEY } from ".";
+import { OLLAMA_BROWSER_EXT_REACTQUERY_KEY } from "./index";
 import { useActiveTab } from "../utils";
 
 import { browser } from "#imports";

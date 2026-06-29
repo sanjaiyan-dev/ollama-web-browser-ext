@@ -7,8 +7,8 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import "./style.css";
 
 import "./App.css";
-import { BottomNav } from "./layout/Navigation.tsx";
 import App from "./App.tsx";
+import { BottomNav } from "./layout/Navigation.tsx";
 
 const OllamaModelList = lazy(() => import("./routes/ModelLists.tsx"));
 const SystemMonitor = lazy(() => import("./routes/CPUUsage.tsx"));

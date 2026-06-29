@@ -230,7 +230,7 @@ export function BottomNav() {
 										setIsExpanded(false);
 										setIsFocused(false);
 									}}
-									className="relative flex items-center justify-center w-10 h-10 rounded-full shrink-0 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.08]"
+									className="relative flex items-center justify-center w-10 h-10 rounded-full shrink-0 bg-white/3 border border-white/8 hover:bg-white/8"
 								>
 									<X className="w-4 h-4 text-[#64748B] hover:text-[#94A3B8]" />
 								</MagneticButton>
@@ -359,7 +359,7 @@ export function BottomNav() {
 												whileHover={{ scale: 1.05 }}
 												whileTap={{ scale: 0.95 }}
 												onClick={handleSendQuery}
-												className="absolute right-1.5 w-9 h-9 flex items-center justify-center rounded-full overflow-hidden shrink-0 shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+												className="absolute right-1.5 w-9 h-9 flex items-center justify-center rounded-full overflow-hidden shrink-0 shadow-[0_0_15px_rgba(139,92,246,0.3)] cursor-pointer"
 											>
 												<div
 													className="absolute inset-0 transition-colors duration-500"
@@ -379,6 +379,7 @@ export function BottomNav() {
 					</AnimatePresence>
 				</motion.div>
 			</motion.div>
+
 			<OllamaQuickQuestionPopover
 				isOpen={isPopoverOpen}
 				onClose={() => setIsPopoverOpen(false)}

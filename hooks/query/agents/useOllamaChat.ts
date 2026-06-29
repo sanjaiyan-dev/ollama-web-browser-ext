@@ -1,107 +1,110 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useTransition } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchOllamaStream } from "./helper";
-import * as browserTools from "@/entrypoints/sidepanel/routes/agent/tools/basicTools"; // Local browser extension actions
+import * as browserTools from "@/entrypoints/sidepanel/routes/agent/tools/basicTools";
 import { toolsSchema } from "@/entrypoints/sidepanel/routes/agent/functions";
 import { useOllamaSelectedModelRead } from "@/hooks/store";
+import { useBrowserCurrentActiveTab } from "../useBrowserActiveTab";
+import { OLLAMA_BROWSER_EXT_REACTQUERY_KEY } from "..";
 
 export interface Message {
 	id: string;
-	role: "user" | "assistant" | "tool";
+	role: "user" | "assistant" | "tool" | "system";
 	content: string;
 	thinking?: boolean;
 	toolsUsed?: string;
 }
 
+interface OllamaApiMessage {
+	role: "user" | "assistant" | "tool" | "system";
+	content: string;
+	tool_calls?: any[];
+}
+
+type BrowserToolFn = (...args: any[]) => Promise<any>;
+
+function generateTimestampId(): string {
+	return Date.now().toString();
+}
+
+function generateToolResponseId(toolName: string): string {
+	return `tool-${Date.now()}-${Math.random()}-${toolName}`;
+}
+
+/**
+ * Registry of available browser tools for fast lookups.
+ */
+const TOOL_REGISTRY: Record<string, BrowserToolFn> = {
+	getActiveTabInfo: browserTools.getActiveTabInfo,
+	createNewTab: browserTools.createNewTab,
+	browser_navigate: browserTools.browser_navigate,
+	click_interactive_element: browserTools.click_interactive_element,
+	get_highlighted_text: browserTools.get_highlighted_text,
+	web_search: browserTools.web_search,
+	read_readable_content: browserTools.read_readable_content,
+	export_session_auth: browserTools.export_session_auth,
+	organize_tabs: browserTools.organize_tabs,
+	get_system_metrics: browserTools.get_system_metrics,
+	create_monitoring_alarm: browserTools.create_monitoring_alarm,
+};
+
 /**
  * Execute extension APIs on the client locally based on LLM parameters
  */
-async function runLocalTool(name: string, args: any): Promise<string> {
+async function runLocalTool(name: string, args: unknown): Promise<string> {
 	try {
-		let result;
-		switch (name) {
-			case "getActiveTabInfo":
-				result = await browserTools.getActiveTabInfo();
-				break;
-
-			case "createNewTab":
-				result = await browserTools.createNewTab(
-					args as browserTools.ToolArguments["createNewTab"],
-				);
-				break;
-
-			case "browser_navigate":
-				result = await browserTools.browser_navigate(
-					args as browserTools.ToolArguments["browser_navigate"],
-				);
-				break;
-
-			case "click_interactive_element":
-				result = await browserTools.click_interactive_element(
-					args as browserTools.ToolArguments["click_interactive_element"],
-				);
-				break;
-
-			case "get_highlighted_text":
-				result = await browserTools.get_highlighted_text();
-				break;
-
-			case "web_search":
-				result = await browserTools.web_search(
-					args as browserTools.ToolArguments["web_search"],
-				);
-				break;
-
-			case "read_readable_content":
-				result = await browserTools.read_readable_content();
-				break;
-
-			case "export_session_auth":
-				result = await browserTools.export_session_auth(
-					args as browserTools.ToolArguments["export_session_auth"],
-				);
-				break;
-
-			case "organize_tabs":
-				result = await browserTools.organize_tabs(
-					args as browserTools.ToolArguments["organize_tabs"],
-				);
-				break;
-
-			case "get_system_metrics":
-				result = await browserTools.get_system_metrics();
-				break;
-
-			case "create_monitoring_alarm":
-				result = await browserTools.create_monitoring_alarm(
-					args as browserTools.ToolArguments["create_monitoring_alarm"],
-				);
-				break;
-
-			default:
-				return JSON.stringify({
-					success: false,
-					error: `The tool function "${name}" is not supported or defined on this client.`,
-				});
+		const tool = TOOL_REGISTRY[name];
+		if (!tool) {
+			return JSON.stringify({
+				success: false,
+				error: `The tool function "${name}" is not supported or defined on this client.`,
+			});
 		}
 
+		const result =
+			args !== undefined && args !== null ? await tool(args) : await tool();
 		return typeof result === "string" ? result : JSON.stringify(result);
-	} catch (err: any) {
-		return JSON.stringify({ error: err?.message || String(err) });
+	} catch (err: unknown) {
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		return JSON.stringify({ error: errorMessage });
 	}
 }
+
+const queryKey = [OLLAMA_BROWSER_EXT_REACTQUERY_KEY, "ollama-ai-chat"] as const;
 
 export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 	const queryClient = useQueryClient();
 	const model = useOllamaSelectedModelRead();
 	const [activeTool, setActiveTool] = useState<string | null>(null);
-	const [isStreaming, setIsStreaming] = useState(false);
+
+	// React 19 Transition automatically tracks stream pending state
+	const [isStreaming, startTransition] = useTransition();
+
+	const lastSentUrlRef = useRef<string | null>(null);
+
+	// Guard updates on unmounted or abandoned components
+	const isMountedRef = useRef(true);
+	useEffect(() => {
+		isMountedRef.current = true;
+		return () => {
+			isMountedRef.current = false;
+		};
+	}, []);
 
 	// Reactive global query cache observer
 	const { data: history = [] } = useQuery<Message[]>({
-		queryKey: ["chat-history"],
+		queryKey: queryKey,
 		initialData: [],
+		queryFn: () => [],
+		staleTime: Infinity,
+		gcTime: Infinity,
 	});
+
+	useEffect(() => {
+		if (history.length === 0) {
+			lastSentUrlRef.current = null;
+		}
+	}, [history.length]);
 
 	/**
 	 * Recursive agent loop supporting multi-turn tools reasoning chains
@@ -109,10 +112,13 @@ export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 	const executeAgentTurn = async (
 		currentMessages: Message[],
 	): Promise<void> => {
-		const assistantMessageId = Date.now().toString();
+		if (!isMountedRef.current) return;
+
+		// Resolved via top-level helper
+		const assistantMessageId = generateTimestampId();
 
 		// Add stream placeholder message
-		queryClient.setQueryData<Message[]>(["chat-history"], (old) => [
+		queryClient.setQueryData<Message[]>(queryKey, (old) => [
 			...(old || []),
 			{
 				id: assistantMessageId,
@@ -123,37 +129,56 @@ export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 		]);
 
 		let accumulatedText = "";
-		let detectedToolCalls: any[] = [];
+		const detectedToolCalls: any[] = [];
 
 		try {
-			// Strip metadata properties to comply with Ollama standard role structures
-			const apiMessages = currentMessages.map((m) => {
-				const apiMsg: any = { role: m.role, content: m.content };
+			const apiMessages: OllamaApiMessage[] = currentMessages.map((m) => {
+				const apiMsg: OllamaApiMessage = { role: m.role, content: m.content };
 				if (m.toolsUsed && m.role === "assistant") {
 					try {
 						apiMsg.tool_calls = JSON.parse(m.toolsUsed);
-					} catch {}
+					} catch (e) {
+						console.error("Failed to parse tool call payload", e);
+					}
 				}
 				return apiMsg;
 			});
 
-			// Capture tool calls from the stream using the optional 5th parameter callback
 			const stream = fetchOllamaStream(
 				apiMessages,
 				model ?? "gemma:latest",
 				isToolMode,
-				toolsSchema, // Custom schema list
+				toolsSchema,
 				(toolCalls: any[]) => {
 					detectedToolCalls.push(...toolCalls);
 				},
 			);
 
-			for await (const chunk of stream) {
+			// Manual consumption of async iterator to bypass React Compiler HIR lowerStatement limits
+			const iterator = stream[Symbol.asyncIterator]();
+			while (true) {
+				const { value: chunk, done } = await iterator.next();
+				if (done) break;
+
+				if (!isMountedRef.current) return;
 				accumulatedText += chunk;
 
-				// Feed back standard output chunks into the UI immediately
-				queryClient.setQueryData<Message[]>(["chat-history"], (old) => {
-					return (old || []).map((msg) =>
+				// O(1) performance optimization targetting the last element of the list
+				queryClient.setQueryData<Message[]>(queryKey, (old) => {
+					if (!old || old.length === 0) return [];
+
+					const lastIdx = old.length - 1;
+					if (old[lastIdx].id === assistantMessageId) {
+						const updated = [...old];
+						updated[lastIdx] = {
+							...updated[lastIdx],
+							content: accumulatedText,
+							thinking: accumulatedText.length < 15,
+						};
+						return updated;
+					}
+
+					return old.map((msg) =>
 						msg.id === assistantMessageId
 							? {
 									...msg,
@@ -167,24 +192,36 @@ export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 
 			// If the model invoked an action turn
 			if (detectedToolCalls.length > 0) {
-				queryClient.setQueryData<Message[]>(["chat-history"], (old) => {
-					return (old || []).map((msg) =>
-						msg.id === assistantMessageId
-							? {
-									...msg,
-									content: accumulatedText || "Executing browser tools...",
-									thinking: false,
-									toolsUsed: JSON.stringify(detectedToolCalls),
-								}
-							: msg,
+				if (!isMountedRef.current) return;
+
+				queryClient.setQueryData<Message[]>(queryKey, (old) => {
+					if (!old || old.length === 0) return [];
+					const lastIdx = old.length - 1;
+					const payload = {
+						content: accumulatedText || "Executing browser tools...",
+						thinking: false,
+						toolsUsed: JSON.stringify(detectedToolCalls),
+					};
+
+					if (old[lastIdx].id === assistantMessageId) {
+						const updated = [...old];
+						updated[lastIdx] = { ...updated[lastIdx], ...payload };
+						return updated;
+					}
+					return old.map((msg) =>
+						msg.id === assistantMessageId ? { ...msg, ...payload } : msg,
 					);
 				});
 
-				const nextHistory =
-					queryClient.getQueryData<Message[]>(["chat-history"]) || [];
+				// Clone list to respect React cache immutability
+				const nextHistory = [
+					...(queryClient.getQueryData<Message[]>(queryKey) || []),
+				];
 
 				// Sequence and resolve actions sequentially
 				for (const toolCall of detectedToolCalls) {
+					if (!isMountedRef.current) return;
+
 					const toolName = toolCall.function.name;
 					const toolArgs = toolCall.function.arguments;
 
@@ -193,38 +230,62 @@ export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 					const toolResult = await runLocalTool(toolName, toolArgs);
 
 					const toolResponseMsg: Message = {
-						id: `tool-${Date.now()}-${Math.random()}`,
+						// Resolved via top-level helper
+						id: generateToolResponseId(toolName),
 						role: "tool",
 						content: toolResult,
 						toolsUsed: toolName,
 					};
 
 					nextHistory.push(toolResponseMsg);
-					queryClient.setQueryData<Message[]>(["chat-history"], () => [
-						...nextHistory,
-					]);
+					queryClient.setQueryData<Message[]>(queryKey, () => [...nextHistory]);
 				}
 
 				setActiveTool(null);
 
-				// Recursively start next assistant turn with populated parameters
+				// Recursively start next assistant turn
 				await executeAgentTurn(nextHistory);
 			} else {
 				// Turn complete
-				queryClient.setQueryData<Message[]>(["chat-history"], (old) => {
-					return (old || []).map((msg) =>
+				if (!isMountedRef.current) return;
+
+				queryClient.setQueryData<Message[]>(queryKey, (old) => {
+					if (!old || old.length === 0) return [];
+					const lastIdx = old.length - 1;
+					if (old[lastIdx].id === assistantMessageId) {
+						const updated = [...old];
+						updated[lastIdx] = { ...updated[lastIdx], thinking: false };
+						return updated;
+					}
+					return old.map((msg) =>
 						msg.id === assistantMessageId ? { ...msg, thinking: false } : msg,
 					);
 				});
 			}
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error("Agent Turn Failure:", error);
-			queryClient.setQueryData<Message[]>(["chat-history"], (old) => {
-				return (old || []).map((msg) =>
+			if (!isMountedRef.current) return;
+
+			const errorString =
+				error instanceof Error ? error.message : String(error);
+			queryClient.setQueryData<Message[]>(queryKey, (old) => {
+				if (!old || old.length === 0) return [];
+				const lastIdx = old.length - 1;
+				const errorMessage = `Error during system execution: ${errorString}`;
+				if (old[lastIdx].id === assistantMessageId) {
+					const updated = [...old];
+					updated[lastIdx] = {
+						...updated[lastIdx],
+						content: errorMessage,
+						thinking: false,
+					};
+					return updated;
+				}
+				return old.map((msg) =>
 					msg.id === assistantMessageId
 						? {
 								...msg,
-								content: `Error during system execution: ${error?.message || error}`,
+								content: errorMessage,
 								thinking: false,
 							}
 						: msg,
@@ -232,21 +293,50 @@ export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 			});
 		}
 	};
+	const { data: currentPageCtx } = useBrowserCurrentActiveTab();
+	const sendMessage = async (
+		text: string,
+		pageContext?: { url: string; title: string; enabled: boolean },
+	): Promise<void> => {
+		return new Promise<void>((resolve) => {
+			startTransition(async () => {
+				const newMessages: Message[] = [];
 
-	const sendMessage = async (text: string): Promise<void> => {
-		setIsStreaming(true);
+				if (pageContext?.enabled && pageContext?.url) {
+					if (lastSentUrlRef.current !== pageContext.url) {
+						try {
+							const pageContent = currentPageCtx?.text;
+							lastSentUrlRef.current = pageContext.url;
 
-		const userMsg: Message = {
-			id: Date.now().toString(),
-			role: "user",
-			content: text,
-		};
+							const systemMsg: Message = {
+								id: `system-${generateTimestampId()}`,
+								role: "system",
+								content:
+									`[System Instruction: You are analyzing the active browser page. Use this background information to guide your replies.\nURL: ${pageContext.url}\nTitle: ${pageContext.title}\nContent:\n${pageContent}]`.trim(),
+							};
+							newMessages.push(systemMsg);
+						} catch (err) {
+							console.error("Failed to append webpage context:", err);
+						}
+					}
+				}
 
-		const updatedHistory = [...history, userMsg];
-		queryClient.setQueryData<Message[]>(["chat-history"], () => updatedHistory);
+				const userMsg: Message = {
+					id: generateTimestampId(),
+					role: "user",
+					content: text,
+				};
+				newMessages.push(userMsg);
 
-		await executeAgentTurn(updatedHistory);
-		setIsStreaming(false);
+				const updatedHistory = [...history, ...newMessages];
+				queryClient.setQueryData<Message[]>(queryKey, () => updatedHistory);
+
+				await executeAgentTurn(updatedHistory);
+				startTransition(() => {
+					resolve();
+				});
+			});
+		});
 	};
 
 	return {

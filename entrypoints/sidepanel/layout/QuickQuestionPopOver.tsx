@@ -1,28 +1,28 @@
-import {
-	useState,
-	useEffect,
-	useRef,
-	useDeferredValue,
-	useMemo,
-	startTransition,
-} from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-	X,
-	Sparkles,
-	Copy,
-	Check,
-	RefreshCw,
-	AlertCircle,
-	ChevronDown,
-} from "lucide-react";
-import { useBrowserCurrentActiveTab } from "@/hooks/query";
+import { useBrowserCurrentActiveTab } from "@/hooks/query/useBrowserActiveTab";
 import { useOllamaListModels } from "@/hooks/query/useOllamaModels";
 import { useActiveTab } from "@/hooks/utils";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+	AlertCircle,
+	Check,
+	ChevronDown,
+	Copy,
+	RefreshCw,
+	Sparkles,
+	X,
+} from "lucide-react";
+import {
+	startTransition,
+	useDeferredValue,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 
+import { useOllamaQuickAnswer } from "@/hooks/query/useOllamaQuickAnswer";
 import { useOllamaSelectedModelState } from "@/hooks/store";
 import type { OllamaModel } from "../routes/ModelLists";
-import { useOllamaQuickAnswer } from "@/hooks/query/useOllamaQuickAnswer";
 
 interface PopoverProps {
 	isOpen: boolean;
@@ -279,7 +279,7 @@ export default function OllamaQuickQuestionPopover({
 									style={{
 										animation: "applePulseBorder 3s ease-in-out infinite",
 									}}
-									className="absolute inset-[-4px] rounded-[28px] overflow-hidden p-[3px] pointer-events-none z-0"
+									className="absolute -inset-1 rounded-[28px] overflow-hidden p-0.75 pointer-events-none z-0"
 								>
 									<div
 										style={{
@@ -350,7 +350,7 @@ export default function OllamaQuickQuestionPopover({
 
 								<button
 									onClick={onClose}
-									className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-[#64748B] hover:text-[#94A3B8] transition-colors"
+									className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-[#64748B] hover:text-[#94A3B8] transition-colors cursor-pointer"
 								>
 									<X className="w-4 h-4" />
 								</button>
@@ -359,7 +359,7 @@ export default function OllamaQuickQuestionPopover({
 							{/* Scrollable Center Body Area */}
 							<div className="flex-1 overflow-y-auto glass-scrollbar py-4 space-y-4 pr-0.5 z-10 text-left">
 								{/* Editable Question Field */}
-								<div className="bg-white/[0.02] border border-white/5 rounded-2xl p-3 flex flex-col gap-1 focus-within:border-white/15 transition-colors">
+								<div className="bg-white/2 border border-white/5 rounded-2xl p-3 flex flex-col gap-1 focus-within:border-white/15 transition-colors">
 									<span className="text-[9px] text-[#64748B] font-bold uppercase tracking-wider">
 										Your Question
 									</span>
@@ -380,7 +380,7 @@ export default function OllamaQuickQuestionPopover({
 										{editedQuery !== submittedQuery && (
 											<button
 												onClick={handleQuerySubmit}
-												className="h-6 px-2.5 rounded-lg bg-[#00E0FF] hover:bg-[#00c2dd] text-[#05050A] font-bold text-[9px] uppercase tracking-wider transition-colors shrink-0"
+												className="h-6 px-2.5 rounded-lg bg-[#00E0FF] hover:bg-[#00c2dd] text-[#05050A] font-bold text-[9px] uppercase tracking-wider transition-colors shrink-0 cursor-pointer"
 											>
 												Apply
 											</button>
@@ -436,7 +436,7 @@ export default function OllamaQuickQuestionPopover({
 										onClick={() => setIsDropdownOpen(!isDropdownOpen)}
 										className="h-8 pl-3 pr-2 rounded-full bg-white/5 border border-white/10 text-xs text-[#94A3B8] hover:bg-white/10 flex items-center gap-1.5 transition-colors"
 									>
-										<span className="max-w-[80px] truncate uppercase tracking-wider font-semibold text-[10px] text-[#F8FAFC]">
+										<span className="max-w-20 truncate uppercase tracking-wider font-semibold text-[10px] text-[#F8FAFC]">
 											{selectedModel || "No local models"}
 										</span>
 										<ChevronDown className="w-3 h-3 text-[#64748B]" />
@@ -475,7 +475,7 @@ export default function OllamaQuickQuestionPopover({
 									<button
 										onClick={handleCopy}
 										disabled={!responseText}
-										className="h-8 w-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-[#64748B] hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-colors"
+										className="h-8 w-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-[#64748B] hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-copy"
 										title="Copy response to clipboard"
 									>
 										{copied ? (
@@ -488,7 +488,7 @@ export default function OllamaQuickQuestionPopover({
 									<button
 										onClick={() => triggerInference()}
 										disabled={isGenerating || !submittedQuery}
-										className="h-8 px-3.5 rounded-full bg-[#8B5CF6] text-white font-semibold text-[10px] uppercase tracking-wider flex items-center gap-1 hover:bg-[#7c4fe3] disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+										className={`h-8 px-3.5 rounded-full bg-[#8B5CF6] text-white font-semibold text-[10px] uppercase tracking-wider flex items-center gap-1 hover:bg-[#7c4fe3] disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-[0_0_15px_rgba(139,92,246,0.3)] ${isGenerating ? "cursor-progress" : "cursor-pointer"}`}
 									>
 										<RefreshCw
 											className={`w-3 h-3 ${isGenerating ? "animate-spin" : ""}`}
