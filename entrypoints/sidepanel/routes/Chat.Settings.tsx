@@ -1,4 +1,4 @@
-import { useEffect, useState, useTransition } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	Loader2,
@@ -60,7 +60,13 @@ async function getUserProfile(): Promise<UserProfile> {
 	}
 }
 
-const ProfileSettingsView = () => {
+const ProfileSettingsView = ({
+	setModelState,
+}: {
+	setModelState: React.Dispatch<React.SetStateAction<boolean>>;
+}) => {
+	"use memo";
+
 	const [profile, setProfile] = useState<UserProfile>(defaultProfile);
 	const [isPending, startTransition] = useTransition();
 	const [isSaved, setIsSaved] = useState(false);
@@ -78,7 +84,12 @@ const ProfileSettingsView = () => {
 			await saveUserProfile(profile);
 			startTransition(() => {
 				setIsSaved(true);
-				setTimeout(() => setIsSaved(false), 2000);
+				setTimeout(() => {
+					setIsSaved(false);
+				}, 2000);
+				setTimeout(() => {
+					setModelState(false);
+				}, 2500);
 			});
 		});
 	};
@@ -108,7 +119,7 @@ const ProfileSettingsView = () => {
 			<div className="grid grid-cols-2 gap-2.5 mt-1">
 				{/* Full Name */}
 				<div className="col-span-2 flex flex-col gap-1 group">
-					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-['Plus_Jakarta_Sans',sans-serif] group-focus-within:text-[#FF2E63] transition-colors">
+					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-mono group-focus-within:text-[#FF2E63] transition-colors">
 						Full Name
 					</label>
 					<div className="relative flex items-center">
@@ -121,7 +132,7 @@ const ProfileSettingsView = () => {
 							value={profile.fullName}
 							autoComplete="name"
 							onChange={(e) => handleChange("fullName", e.target.value)}
-							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/[0.06] rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
+							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/6 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
 							placeholder="e.g. Sanjaiyan Parthipan"
 						/>
 					</div>
@@ -129,7 +140,7 @@ const ProfileSettingsView = () => {
 
 				{/* Email */}
 				<div className="flex flex-col gap-1 group col-span-1">
-					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-['Plus_Jakarta_Sans',sans-serif] group-focus-within:text-[#FF2E63] transition-colors">
+					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-mono group-focus-within:text-[#FF2E63] transition-colors">
 						Email
 					</label>
 					<div className="relative flex items-center">
@@ -142,7 +153,7 @@ const ProfileSettingsView = () => {
 							value={profile.email}
 							autoComplete="email"
 							onChange={(e) => handleChange("email", e.target.value)}
-							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/[0.06] rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
+							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/6 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
 							placeholder="name@email.com"
 						/>
 					</div>
@@ -150,7 +161,7 @@ const ProfileSettingsView = () => {
 
 				{/* Phone */}
 				<div className="flex flex-col gap-1 group col-span-1">
-					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-['Plus_Jakarta_Sans',sans-serif] group-focus-within:text-[#FF2E63] transition-colors">
+					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-mono group-focus-within:text-[#FF2E63] transition-colors">
 						Phone
 					</label>
 					<div className="relative flex items-center">
@@ -163,14 +174,14 @@ const ProfileSettingsView = () => {
 							value={profile.phone}
 							autoComplete="tel"
 							onChange={(e) => handleChange("phone", e.target.value)}
-							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/[0.06] rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
+							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/6 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
 						/>
 					</div>
 				</div>
 
 				{/* Address Line 1 */}
 				<div className="col-span-2 flex flex-col gap-1 group">
-					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-['Plus_Jakarta_Sans',sans-serif] group-focus-within:text-[#FF2E63] transition-colors">
+					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-mono group-focus-within:text-[#FF2E63] transition-colors">
 						Address Line 1
 					</label>
 					<div className="relative flex items-center">
@@ -183,7 +194,7 @@ const ProfileSettingsView = () => {
 							value={profile.addressLine1}
 							autoComplete="street-address"
 							onChange={(e) => handleChange("addressLine1", e.target.value)}
-							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/[0.06] rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
+							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/6 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
 							placeholder="eg: Selva Sannithi Murugan, Thondaimanaru"
 						/>
 					</div>
@@ -191,7 +202,7 @@ const ProfileSettingsView = () => {
 
 				{/* Address Line 2 */}
 				<div className="col-span-2 flex flex-col gap-1 group">
-					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-['Plus_Jakarta_Sans',sans-serif] group-focus-within:text-[#FF2E63] transition-colors">
+					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-mono group-focus-within:text-[#FF2E63] transition-colors">
 						Address Line 2 (Suite, Apt)
 					</label>
 					<div className="relative flex items-center">
@@ -204,7 +215,7 @@ const ProfileSettingsView = () => {
 							value={profile.addressLine2}
 							autoComplete="address-line2"
 							onChange={(e) => handleChange("addressLine2", e.target.value)}
-							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/[0.06] rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
+							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/6 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
 							placeholder="eg: Jaffna, Sri Lanka"
 						/>
 					</div>
@@ -212,7 +223,7 @@ const ProfileSettingsView = () => {
 
 				{/* City */}
 				<div className="flex flex-col gap-1 group col-span-1">
-					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-['Plus_Jakarta_Sans',sans-serif] group-focus-within:text-[#FF2E63] transition-colors">
+					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-mono group-focus-within:text-[#FF2E63] transition-colors">
 						City
 					</label>
 					<div className="relative flex items-center">
@@ -225,7 +236,7 @@ const ProfileSettingsView = () => {
 							value={profile.city}
 							autoComplete="address-level2"
 							onChange={(e) => handleChange("city", e.target.value)}
-							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/[0.06] rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
+							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/6 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
 							placeholder="eg: Point Pedro"
 						/>
 					</div>
@@ -233,7 +244,7 @@ const ProfileSettingsView = () => {
 
 				{/* ZIP Code */}
 				<div className="flex flex-col gap-1 group col-span-1">
-					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-['Plus_Jakarta_Sans',sans-serif] group-focus-within:text-[#FF2E63] transition-colors">
+					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-mono group-focus-within:text-[#FF2E63] transition-colors">
 						ZIP Code
 					</label>
 					<div className="relative flex items-center">
@@ -246,7 +257,7 @@ const ProfileSettingsView = () => {
 							value={profile.zipCode}
 							autoComplete="postal-code"
 							onChange={(e) => handleChange("zipCode", e.target.value)}
-							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/[0.06] rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
+							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/6 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
 							placeholder="eg: 40000"
 						/>
 					</div>
@@ -254,7 +265,7 @@ const ProfileSettingsView = () => {
 
 				{/* State */}
 				<div className="flex flex-col gap-1 group col-span-1">
-					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-['Plus_Jakarta_Sans',sans-serif] group-focus-within:text-[#FF2E63] transition-colors">
+					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-mono group-focus-within:text-[#FF2E63] transition-colors">
 						State / Province
 					</label>
 					<div className="relative flex items-center">
@@ -266,7 +277,7 @@ const ProfileSettingsView = () => {
 							type="text"
 							value={profile.state}
 							onChange={(e) => handleChange("state", e.target.value)}
-							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/[0.06] rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
+							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/6 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
 							placeholder="eg: Jaffna"
 						/>
 					</div>
@@ -274,7 +285,7 @@ const ProfileSettingsView = () => {
 
 				{/* Country */}
 				<div className="flex flex-col gap-1 group col-span-1">
-					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-['Plus_Jakarta_Sans',sans-serif] group-focus-within:text-[#FF2E63] transition-colors">
+					<label className="text-[9px] uppercase text-[#64748B] tracking-widest font-bold font-mono group-focus-within:text-[#FF2E63] transition-colors">
 						Country
 					</label>
 					<div className="relative flex items-center">
@@ -287,7 +298,7 @@ const ProfileSettingsView = () => {
 							value={profile.country}
 							autoComplete="address-level1"
 							onChange={(e) => handleChange("country", e.target.value)}
-							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/[0.06] rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
+							className="w-full bg-[rgba(5,5,10,0.55)] border border-white/6 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-[#F8FAFC] outline-none hover:border-white/10 focus:border-[#FF2E63]/40 focus:ring-2 focus:ring-[#FF2E63]/10 transition-all font-sans duration-300 placeholder:text-[#64748B]"
 							placeholder="eg: Sri Lanka"
 						/>
 					</div>
@@ -328,7 +339,7 @@ const ProfileSettingsView = () => {
 							animate={{ opacity: 1, scale: 1 }}
 							exit={{ opacity: 0 }}
 							transition={{ type: "spring", stiffness: 300, damping: 15 }}
-							className="flex items-center gap-1.5"
+							className="flex items-center gap-1.5 cursor-progress"
 						>
 							<Check size={12} className="animate-bounce" /> Profile Details
 							Secured
@@ -339,7 +350,7 @@ const ProfileSettingsView = () => {
 							initial={{ opacity: 0, y: 5 }}
 							animate={{ opacity: 1, y: 0 }}
 							exit={{ opacity: 0, y: -5 }}
-							className="flex items-center gap-1.5 relative z-10"
+							className="flex items-center gap-1.5 relative z-10 cursor-pointer"
 						>
 							<Save size={12} /> Save Form Identity
 						</motion.span>

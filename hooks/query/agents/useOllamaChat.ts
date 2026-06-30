@@ -31,6 +31,52 @@ function generateToolResponseId(toolName: string): string {
 	return `tool-${Date.now()}-${Math.random().toString(36).substring(2, 9)}-${toolName}-${crypto?.randomUUID?.()}`;
 }
 
+const currentDateAndTime = new Date().toString();
+
+const systemPrompt = `
+<system_prompt>
+
+<role>
+You are an efficient, action-oriented Browser Copilot Agent. Your primary objective is to execute browser-level operations on behalf of the user using designated local API tools.
+</role>
+
+<datetime_context>
+Current Time and Date: ${currentDateAndTime}
+</datetime_context>
+
+<task_workflows>
+<workflow name="form_filling_and_autofill">
+When the user requests to autofill, register, or submit a form:
+1. Examine the data inside the <user_profile> tag.
+2. If the <user_profile> block is empty, run the 'get_user_profile' tool first to retrieve the user's saved data.
+3. Once you have the profile, map the user details to the form requirements and immediately run the 'fill_form_fields' tool. Do not guess personal information.
+</workflow>
+
+<workflow name="navigation_and_tab_management">
+- To navigate the active tab, call 'browser_navigate'.
+- To open a website in a new window, call 'createNewTab'.
+- To extract text content from the current tab, call 'read_readable_content'.
+- To group active tabs and clean up workspace, call 'organize_tabs'.
+</workflow>
+
+<workflow name="information_retrieval_and_interaction">
+- To look up external information, call 'web_search'.
+- To interact with a button, link, or text box on the page, call 'click_interactive_element'.
+- To extract system resources, call 'get_system_metrics'.
+- To capture text the user highlighted, call 'get_highlighted_text'.
+- To track page changes on an interval, call 'create_monitoring_alarm'.
+</workflow>
+</task_workflows>
+
+<operational_rules>
+1. EXECUTE, DO NOT EXPLAIN: Prioritize action over conversational filler. Do not write introductory paragraphs telling the user what you "plan" to do. State your action and call the tool in the same turn.
+2. SOURCE GROUNDING: Only use webpage data or profile details that exist inside the <dynamic_context> XML block or are returned directly by a tool. If the data is absent, you must run the appropriate tool to fetch it first.
+3. CONCISENESS: Keep your conversational output under two sentences to minimize local LLM streaming latency.
+</operational_rules>
+
+</system_prompt>
+`.trim();
+
 /**
  * Registry of available browser tools for fast lookups.
  */
@@ -96,7 +142,13 @@ export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 	// Reactive global query cache observer
 	const { data: history = [] } = useQuery<Message[]>({
 		queryKey: queryKey,
-		initialData: [],
+		initialData: [
+			{
+				role: "system",
+				id: `system-${generateTimestampId()}`,
+				content: systemPrompt,
+			},
+		],
 		queryFn: () => [],
 		staleTime: Infinity,
 		gcTime: Infinity,
@@ -165,7 +217,6 @@ export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 				if (!isMountedRef.current) return;
 				accumulatedText += chunk;
 
-				// O(1) performance optimization targetting the last element of the list
 				queryClient.setQueryData<Message[]>(queryKey, (old) => {
 					if (!old || old.length === 0) return [];
 
@@ -301,7 +352,7 @@ export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 		pageContext?: { url: string; title: string; enabled: boolean },
 	): Promise<void> => {
 		return new Promise<void>((resolve) => {
-			startTransition(async () => {
+			startTransition(() => {
 				const newMessages: Message[] = [];
 
 				if (pageContext?.enabled && pageContext?.url) {
@@ -332,10 +383,11 @@ export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 
 				const updatedHistory = [...history, ...newMessages];
 				queryClient.setQueryData<Message[]>(queryKey, () => updatedHistory);
-
-				await executeAgentTurn(updatedHistory);
-				startTransition(() => {
-					resolve();
+				startTransition(async () => {
+					await executeAgentTurn(updatedHistory);
+					startTransition(() => {
+						resolve();
+					});
 				});
 			});
 		});

@@ -272,7 +272,7 @@ const ChatInterface = () => {
 			{/* Main Container */}
 			<div className="flex flex-col w-full h-full p-4 relative z-10">
 				{/* Header - Glass Panel */}
-				<div className="flex items-center justify-between p-3 rounded-2xl bg-[rgba(20,20,25,0.4)] backdrop-blur-lg border border-[rgba(255,255,255,0.08)] mb-4 shadow-[0_8px_32px_rgba(139,92,246,0.05)] bg-transparent">
+				<div className="flex items-center justify-between p-3 rounded-2xl bg-[rgba(20,20,25,0.4)] backdrop-blur-lg border border-[rgba(255,255,255,0.08)] mb-4 shadow-[0_8px_32px_rgba(139,92,246,0.05)] relative z-50">
 					<div className="flex items-center gap-3">
 						<div className="w-9 h-9 rounded-full bg-linear-to-tr from-[#00E0FF] to-[#8B5CF6] p-px shadow-[0_0_15px_rgba(0,224,255,0.5)]">
 							<div className="w-full h-full rounded-full bg-[#05050A] flex items-center justify-center">
@@ -296,7 +296,7 @@ const ChatInterface = () => {
 						</div>
 
 						{/* Hover Context Glass Panel */}
-						<div className="absolute right-0 top-[120%] w-55 p-3 rounded-2xl bg-[rgba(15,15,20,0.85)] backdrop-blur-xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.5),0_0_20px_rgba(0,224,255,0.1)] opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-300 ease-out z-50 pointer-events-none">
+						<div className="absolute right-0 top-[120%] w-55 p-3 rounded-2xl bg-[rgba(15,15,20,0.85)] backdrop-blur-xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.5),0_0_20px_rgba(0,224,255,0.1)] opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-300 ease-out z-99 pointer-events-none">
 							<div className="flex items-center gap-1.5 text-[#F8FAFC] font-['Plus_Jakarta_Sans',sans-serif] font-bold text-[12px] mb-1">
 								<Sparkles size={12} className="text-[#ffe100]" /> Protocol Mode
 							</div>
@@ -356,7 +356,7 @@ const ChatInterface = () => {
 								exit={{ opacity: 0, scale: 0.98, y: 10 }}
 								className="h-full overflow-y-auto no-scrollbar"
 							>
-								<ProfileSettingsView />
+								<ProfileSettingsView setModelState={setIsSettingsOpen} />
 							</motion.div>
 						) : messages.length === 0 ? (
 							<motion.div
@@ -394,7 +394,7 @@ const ChatInterface = () => {
 						className="flex items-center w-full gap-2 relative z-10"
 					>
 						<div className="relative group flex items-center justify-center">
-							<div className="absolute bottom-[135%] left-0 w-52 p-3 rounded-2xl bg-[rgba(15,15,20,0.92)] backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.6)] opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-999999">
+							<div className="absolute bottom-[135%] left-0 w-52 p-3 rounded-2xl bg-[rgba(15,15,20,0.92)] backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.6)] opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-99">
 								<div className="flex items-center gap-1.5 text-[#F8FAFC] font-['Plus_Jakarta_Sans',sans-serif] font-bold text-[11px] mb-1">
 									<Globe size={12} className="text-[#8B5CF6]" /> Webpage Context
 								</div>

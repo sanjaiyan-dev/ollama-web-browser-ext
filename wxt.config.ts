@@ -1,18 +1,18 @@
 import { defineConfig } from "wxt";
 import tailwindcss from "@tailwindcss/vite";
+import { reactCompilerPreset } from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
 	modules: ["@wxt-dev/module-react"],
-	react: {
-		vite: {
-			babel: {
-				plugins: ["babel-plugin-react-compiler"],
-			},
-		},
-	},
 	vite: () => ({
-		plugins: [tailwindcss()],
+		plugins: [
+			tailwindcss(),
+			babel({
+				presets: [reactCompilerPreset()],
+			}),
+		],
 	}),
 	manifest: {
 		name: "Ollama Web Browser",
