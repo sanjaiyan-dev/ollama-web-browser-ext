@@ -242,7 +242,6 @@ const ChatInterface = () => {
 	} = useOllamaChatStream({ isToolMode });
 	const messages = useDeferredValue(freshMessages);
 
-	// React 19: useActionState supports native async calls, avoiding nested startTransitions
 	const [, submitAction, isPending] = useActionState(
 		async (prevState: any, formData: FormData) => {
 			const text = formData.get("message") as string;

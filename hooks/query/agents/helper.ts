@@ -5,7 +5,8 @@ export async function* fetchOllamaStream(
 	model: string,
 	isToolMode: boolean,
 	functionCall: typeof toolsSchema,
-	onToolCalls?: (toolCalls: any[]) => void, // Tactical: Capture tool invocations on-the-fly
+	onToolCalls?: (toolCalls: any[]) => void,
+	apiEndpoint = "http://localhost:11434/api/chat",
 ): AsyncIterable<string> {
 	"use memo";
 	const payload = {
@@ -17,7 +18,7 @@ export async function* fetchOllamaStream(
 		...(functionCall && functionCall.length > 0 ? { tools: functionCall } : {}),
 	};
 
-	const response = await fetch("http://localhost:11434/api/chat", {
+	const response = await fetch(apiEndpoint, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",

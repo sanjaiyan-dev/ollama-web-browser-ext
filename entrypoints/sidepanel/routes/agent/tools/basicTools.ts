@@ -23,6 +23,25 @@ export type ToolArguments = {
 	fill_form_fields: {
 		fields: Array<{ selector?: string; label?: string; value: string }>;
 	};
+
+	// Google Related Tools
+	compose_gmail_window: {
+		to: string;
+		subject: string;
+		body: string;
+		cc?: string;
+		bcc?: string;
+	};
+	schedule_google_calendar: {
+		title: string;
+		details?: string;
+		location?: string;
+		start_datetime: string;
+		end_datetime: string;
+	};
+	create_google_workspace_file: {
+		app_type: "document" | "spreadsheet" | "presentation" | "form";
+	};
 };
 
 /**

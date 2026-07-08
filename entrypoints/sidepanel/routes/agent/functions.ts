@@ -292,6 +292,99 @@ const basicTools = [
 	},
 ] as const; // This closes the basicTools array
 
-const googleTools = [] satisfies ToolDefinition[];
+const googleTools = [
+	{
+		type: "function",
+		function: {
+			name: "compose_gmail_window",
+			description:
+				"Opens a Gmail compose window in a new tab with pre-filled fields (to, subject, body, cc, bcc) using Google's web mailto companion. Ideal for drafts or sending analyzed webpage summaries.",
+			parameters: {
+				type: "object",
+				properties: {
+					to: {
+						type: "string",
+						description: "The recipient's email address.",
+					},
+					subject: {
+						type: "string",
+						description: "The subject line of the email.",
+					},
+					body: {
+						type: "string",
+						description:
+							"The main body content of the email. Supports plain text, line breaks, and spacing.",
+					},
+					cc: {
+						type: "string",
+						description: "Optional CC email addresses, comma-separated.",
+					},
+					bcc: {
+						type: "string",
+						description: "Optional BCC email addresses, comma-separated.",
+					},
+				},
+				required: ["to", "subject", "body"],
+			},
+		},
+	},
+	{
+		type: "function",
+		function: {
+			name: "schedule_google_calendar",
+			description:
+				"Opens a Google Calendar event creation page in a new tab with pre-filled event details, dates, and descriptions using Web URL template parameters.",
+			parameters: {
+				type: "object",
+				properties: {
+					title: {
+						type: "string",
+						description: "The title/name of the calendar event.",
+					},
+					details: {
+						type: "string",
+						description: "The detailed description or notes for the event.",
+					},
+					location: {
+						type: "string",
+						description:
+							"The physical location, address, or virtual meeting link.",
+					},
+					start_datetime: {
+						type: "string",
+						description:
+							"Start timestamp in ISO 8601 format (e.g., 'YYYY-MM-DDTHH:mm:ss' or 'YYYYMMDDTHHmmSSZ').",
+					},
+					end_datetime: {
+						type: "string",
+						description:
+							"End timestamp in ISO 8601 format (e.g., 'YYYY-MM-DDTHH:mm:ss' or 'YYYYMMDDTHHmmSSZ').",
+					},
+				},
+				required: ["title", "start_datetime", "end_datetime"],
+			},
+		},
+	},
+	{
+		type: "function",
+		function: {
+			name: "create_google_workspace_file",
+			description:
+				"Launches a fresh Google Workspace file (Doc, Sheet, or Slide) in a new tab using Google's fast-creation shortcuts.",
+			parameters: {
+				type: "object",
+				properties: {
+					app_type: {
+						type: "string",
+						description:
+							"The type of Google Workspace application file to create.",
+						enum: ["document", "spreadsheet", "presentation", "form"],
+					},
+				},
+				required: ["app_type"],
+			},
+		},
+	},
+] satisfies ToolDefinition[];
 
 export const toolsSchema = [...basicTools, ...googleTools] as const;
