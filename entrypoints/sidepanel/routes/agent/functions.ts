@@ -28,6 +28,19 @@ const basicTools = [
 	{
 		type: "function",
 		function: {
+			name: "list_all_tabs",
+			description:
+				"Retrieves details for all currently open browser tabs (across all windows), including their title, URL, ID, and active state. Accepts no parameters.",
+			parameters: {
+				type: "object",
+				properties: {},
+				required: [],
+			},
+		},
+	},
+	{
+		type: "function",
+		function: {
 			name: "createNewTab",
 			description:
 				"Opens a completely new browser tab with a specific URL. Use this ONLY when the user explicitly asks for a 'new' tab; otherwise, use browser_navigate.",

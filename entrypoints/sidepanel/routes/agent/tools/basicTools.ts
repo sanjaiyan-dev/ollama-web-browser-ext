@@ -5,6 +5,7 @@ import axios from "axios";
  */
 export type ToolArguments = {
 	createNewTab: { url: string };
+	list_all_tabs: Record<string, never>;
 	browser_navigate: { url: string };
 	click_interactive_element: { text?: string; selector?: string };
 	web_search: { query: string };
@@ -525,4 +526,27 @@ export async function fill_form_fields(
 			message: `Script injection failed: ${error?.message || error}`,
 		};
 	}
+}
+
+/**
+ * 14. List All Opened Tabs
+ * Queries and gathers structured metadata for all open tabs in the browser.
+ */
+export async function list_all_tabs(): Promise<
+	Array<{
+		id?: number;
+		title?: string;
+		url?: string;
+		active: boolean;
+		windowId: number;
+	}>
+> {
+	const tabs = await browser.tabs.query({});
+	return tabs.map((tab) => ({
+		id: tab.id,
+		title: tab.title,
+		url: tab.url,
+		active: tab.active,
+		windowId: tab.windowId,
+	}));
 }

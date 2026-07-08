@@ -114,6 +114,10 @@ You must only invoke functions listed within your explicit tool schemas. Halluci
 16. create_google_workspace_file
     - Purpose: Quickly opens a blank Google workspace document, sheet, slide, or form using online shortcuts.
     - Rule: Limit 'app_type' strictly to: "document", "spreadsheet", "presentation", "form".
+
+17. list_all_tabs
+    - Purpose: Retrieves a list of all currently open browser tabs.
+    - Rule: Call this when the user asks about multiple tabs, wants to count open pages, needs to locate a tab without searching manually, or before managing/organizing the workspace.
 </tool_directory_and_rules>
 
 <workflow_protocols>
@@ -158,6 +162,7 @@ You must only invoke functions listed within your explicit tool schemas. Halluci
  */
 const TOOL_REGISTRY: Record<string, BrowserToolFn> = {
 	getActiveTabInfo: browserTools.getActiveTabInfo,
+	list_all_tabs: browserTools.list_all_tabs,
 	createNewTab: browserTools.createNewTab,
 	browser_navigate: browserTools.browser_navigate,
 	click_interactive_element: browserTools.click_interactive_element,
@@ -204,6 +209,8 @@ const queryKey = [OLLAMA_BROWSER_EXT_REACTQUERY_KEY, "ollama-ai-chat"] as const;
 export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 	const queryClient = useQueryClient();
 	const model = useOllamaSelectedModelRead();
+	const apiEndpoint = useOllamaEndPointRead();
+	const currentApiEndPoint = `${apiEndpoint}/api/chat`;
 	const [activeTool, setActiveTool] = useState<string | null>(null);
 
 	// React 19 Transition automatically tracks stream pending state
@@ -278,7 +285,7 @@ export function useOllamaChatStream({ isToolMode }: { isToolMode: boolean }) {
 				}
 				return apiMsg;
 			});
-			const currentApiEndPoint = useOllamaEndPointRead();
+
 			const stream = fetchOllamaStream(
 				apiMessages,
 				model ?? "gemma:latest",
