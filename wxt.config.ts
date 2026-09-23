@@ -24,6 +24,7 @@ export default defineConfig({
 			"system.memory",
 			"scripting",
 			"activeTab",
+			"declarativeNetRequest",
 		],
 		host_permissions: ["http://localhost/*", "<all_urls>"],
 	},
